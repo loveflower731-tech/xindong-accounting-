@@ -1,0 +1,2301 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>歆動整合型記帳系統</title>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+  import {
+    getFirestore,
+    doc,
+    getDoc,
+    setDoc,
+    deleteDoc,
+    collection,
+    getDocs,
+    addDoc,
+    query,
+    orderBy,
+    limit,
+    increment,
+    writeBatch
+  } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+  import { getAuth } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBu05miM9GkpT2_QTWoSdGElNbAutCvMeM",
+    authDomain: "xindong-accounting.firebaseapp.com",
+    projectId: "xindong-accounting",
+    storageBucket: "xindong-accounting.firebasestorage.app",
+    messagingSenderId: "647293911344",
+    appId: "1:647293911344:web:b40d5457a7bd89ee7388f5"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+  
+  window.firebaseApp = app;
+  window.firebaseDb = db;
+  window.firebaseAuth = auth;
+  window.firebaseReady = true;
+  window.firestoreDoc = doc;
+  window.firestoreGetDoc = getDoc;
+  window.firestoreSetDoc = setDoc;
+  window.firestoreCollection = collection;
+  window.firestoreGetDocs = getDocs;
+  window.firestoreAddDoc = addDoc;
+  window.firestoreQuery = query;
+  window.firestoreOrderBy = orderBy;
+  window.firestoreLimit = limit;
+  window.firestoreDeleteDoc = deleteDoc;
+  window.firestoreIncrement = increment;
+  window.firestoreWriteBatch = () => writeBatch(db);
+
+  console.log('Firebase initialized successfully');
+</script>
+<style>
+:root{--primary:#7a1f2b;--primary-2:#c0392b;--success:#3f7d5c;--danger:#b3282d;--warning:#c98a2c;--bg:#faf3e8;--card:rgba(255,251,244,0.85);--text:#3b241c;--muted:#8c7261;--border:rgba(178,74,58,0.22);--shadow:0 18px 40px rgba(122,31,43,0.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang TC','Microsoft JhengHei',sans-serif;background:linear-gradient(180deg,#fdf8f0 0%, #f6ead9 100%);color:var(--text);line-height:1.5}
+header{background:linear-gradient(135deg,#3a0f14 0%, #7a1f2b 55%, #c0392b 100%);color:#fff;padding:22px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;box-shadow:var(--shadow);backdrop-filter:blur(10px)}
+h1{font-size:1.6rem}.sub{font-size:.9rem;opacity:.9}
+.container{max-width:1480px;margin:0 auto;padding:20px}
+.tabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.tab-btn{border:none;border-radius:999px;padding:13px 20px;cursor:pointer;background:rgba(255,251,244,0.85);color:var(--text);font-weight:800;font-size:1.02rem;box-shadow:0 8px 20px rgba(122,31,43,0.10)}
+.tab-btn.active{background:linear-gradient(135deg,#7a1f2b,#c0392b);color:#fff;transform:translateY(-1px)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.grid{display:grid;grid-template-columns:400px 1fr;gap:18px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media(max-width:980px){.grid,.grid-2,.grid-3{grid-template-columns:1fr}}
+.card{background:var(--card);border-radius:22px;padding:20px;box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:18px;backdrop-filter:blur(16px)}
+.card h2,.card h3{font-size:1.08rem;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+.stat-box{background:#fffaf3;border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+.stat-box .label{color:var(--muted);font-size:.86rem}
+.stat-box .number{font-weight:800;font-size:1.6rem;margin-top:6px}
+.income{color:var(--success)}.expense{color:var(--danger)}.balance{color:var(--primary-2)}.warning{color:var(--warning)}
+.form-group{margin-bottom:14px}.form-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(max-width:680px){.form-row{grid-template-columns:1fr}}
+.form-row-3{display:grid;grid-template-columns:1.2fr .8fr 1fr;gap:10px;align-items:end}
+@media(max-width:680px){.form-row-3{grid-template-columns:1fr}}
+.item-lines{min-height:110px;white-space:pre-wrap;line-height:1.45}
+label{display:block;font-weight:700;margin-bottom:6px;font-size:.92rem}
+input,select,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);font-size:.95rem;background:#fffdfa}
+textarea{min-height:68px;resize:vertical}
+.item-grid-input{min-height:140px;line-height:1.6;white-space:pre-wrap}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary-2)}
+.check-inline{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.check-inline input{width:auto}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:#fbeee1;border:1px solid var(--border)}
+.btn{border:none;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:700;font-size:.95rem}
+.btn-primary{background:var(--primary-2);color:#fff}.btn-success{background:var(--success);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}.btn-muted{background:#f3e6d8;color:var(--text)}
+.btn-warning{background:var(--warning);color:#fff}.btn:disabled{opacity:.55;cursor:not-allowed}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.alert{padding:12px 14px;border-radius:12px;margin-bottom:12px;font-weight:700;display:none}
+.alert.show{display:block}.alert-warning{background:#fbead0;color:#8a5a00;border:1px solid #edc989}
+.alert-info{background:#fdeee9;color:#7a1f2b;border:1px solid #e8c4bb}
+.cash-box{background:linear-gradient(135deg,#fff8ec,#fdf0da);border:1px solid #f0d9ae}
+.muted{color:var(--muted);font-size:.86rem}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:#fbeee1;position:sticky;top:0;z-index:1}
+.table-wrap{overflow:auto;max-height:68vh;position:relative}
+#reportTableBody button{pointer-events:auto}
+.tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:.76rem;font-weight:800}
+.tag-income{background:#e2f2e8;color:#22593f}.tag-expense{background:#fbe3e0;color:#8a231f}
+.tag-transfer{background:#f7ecd6;color:#8a5a10}.tag-yes{background:#e2f2e8;color:#22593f}
+.tag-no{background:#f2ece4;color:#6b5c4f}.tag-ab{background:#fbe4d5;color:#9a3412}
+.small{font-size:.82rem}.search-bar{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr 1fr auto;gap:10px;margin-bottom:12px}
+@media(max-width:1180px){.search-bar{grid-template-columns:1fr 1fr}}
+.inline-number{font-size:1.15rem;font-weight:800}.analysis-list{display:grid;gap:8px}
+.analysis-item{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#fffaf3}
+.manager-board{display:grid;gap:14px}
+.season-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.reminder-card{border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,#fffaf6 0%,#fdf1e2 100%);padding:14px;box-shadow:0 10px 24px rgba(122,31,43,0.08)}
+.reminder-card .top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.reminder-title{font-size:1rem;font-weight:800;color:var(--text)}
+.reminder-badge{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:.78rem;font-weight:800}
+.badge-peak{background:#fff1d6;color:#9a6700}
+.badge-exam{background:#fde2e2;color:#9f1239}
+.badge-holiday{background:#fdecd2;color:#92400e}
+.badge-alert{background:#fbe3e0;color:#9f1d18}
+.reminder-time{font-size:.84rem;color:var(--muted);margin-bottom:8px}
+.reminder-note{font-size:.9rem;line-height:1.5}
+.timeline-board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.timeline-item{position:relative;border-left:4px solid var(--primary-2);padding:12px 12px 12px 14px;background:#fdf6ee;border-radius:12px;border:1px solid rgba(178,74,58,.18);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+.timeline-item h4{font-size:.95rem;margin-bottom:6px}
+.timeline-meta{font-size:.82rem;color:var(--muted);margin-bottom:6px}
+.timeline-item.is-next{border-left-color:#c98a2c;border-color:rgba(201,138,44,.35);background:linear-gradient(180deg,#fff7ed,#fffbeb);box-shadow:0 10px 24px rgba(201,138,44,.18);transform:translateY(-2px)}
+.timeline-item.is-next::after{content:'本月最近報名期';position:absolute;top:10px;right:10px;font-size:.68rem;font-weight:800;color:#92400e;background:#fde68a;padding:4px 8px;border-radius:999px;letter-spacing:.02em}
+.todo-board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.todo-item{border:1px solid var(--border);border-radius:14px;background:#fffaf3;padding:14px}
+.todo-item h4{font-size:.92rem;margin-bottom:8px}
+.todo-item p{font-size:.86rem;color:var(--muted);line-height:1.5}
+.season-state{display:inline-flex;align-items:center;gap:8px;padding:9px 13px;border-radius:999px;font-size:.82rem;font-weight:800;border:1px solid var(--border);margin:0 0 12px;box-shadow:0 8px 20px rgba(122,31,43,.08)}
+.season-state .dot{width:10px;height:10px;border-radius:999px;background:currentColor;box-shadow:0 0 0 4px color-mix(in srgb,currentColor 16%,white)}
+.season-peak{background:#ecfdf5;color:#166534;border-color:#86efac}
+.season-slow{background:#fdece0;color:#9a3412;border-color:#f3c39e}
+.season-school{background:#fdf3df;color:#92400e;border-color:#f0cf8e}
+.season-general{background:#f7f0e6;color:#5c4a3a;border-color:#e3d2bd}
+.right{text-align:right}.empty{text-align:center;color:var(--muted);padding:24px}
+@media(max-width:1180px){.season-grid,.timeline-board,.todo-board{grid-template-columns:1fr}}
+@media(max-width:760px){
+  body{font-size:15px}
+  header{padding:18px 16px;align-items:flex-start}
+  .container{padding:14px}
+  .tab-bar{gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tab-bar::-webkit-scrollbar{display:none}
+  .tab-btn{padding:11px 16px;font-size:.94rem;white-space:nowrap;flex:0 0 auto}
+  .card{padding:16px;border-radius:18px}
+  .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .stat-box{padding:14px 12px}
+  .number{font-size:1.45rem}
+  .search-bar{grid-template-columns:1fr;gap:8px}
+  .table-wrap{overflow:visible;max-height:none}
+  table{min-width:100%}
+  #frontTable thead,#reportTable thead,#invoiceTable thead,#longTermTable thead{display:none}
+  #frontTable,#reportTable,#invoiceTable,#longTermTable,
+  #frontTable tbody,#reportTable tbody,#invoiceTable tbody,#longTermTable tbody,
+  #frontTable tr,#reportTable tr,#invoiceTable tr,#longTermTable tr,
+  #frontTable td,#reportTable td,#invoiceTable td,#longTermTable td{display:block;width:100%}
+  #frontTable tr,#reportTable tr,#invoiceTable tr,#longTermTable tr{background:#fffaf3;border:1px solid var(--border);border-radius:16px;padding:10px 12px;margin-bottom:12px;box-shadow:0 10px 24px rgba(122,31,43,.08)}
+  #frontTable td,#reportTable td,#invoiceTable td,#longTermTable td{border:none;padding:6px 0;text-align:left}
+  #frontTable td::before,#reportTable td::before,#invoiceTable td::before,#longTermTable td::before{display:block;font-size:.76rem;font-weight:800;color:var(--muted);margin-bottom:3px}
+  #frontTable td:nth-child(1)::before,#reportTable td:nth-child(1)::before,#invoiceTable td:nth-child(1)::before,#longTermTable td:nth-child(1)::before{content:'日期'}
+  #frontTable td:nth-child(2)::before,#reportTable td:nth-child(2)::before,#invoiceTable td:nth-child(2)::before,#longTermTable td:nth-child(2)::before{content:'操作人'}
+  #frontTable td:nth-child(3)::before,#reportTable td:nth-child(3)::before,#invoiceTable td:nth-child(3)::before,#longTermTable td:nth-child(3)::before{content:'類別'}
+  #frontTable td:nth-child(4)::before,#reportTable td:nth-child(4)::before,#invoiceTable td:nth-child(4)::before,#longTermTable td:nth-child(4)::before{content:'對象'}
+  #frontTable td:nth-child(5)::before,#reportTable td:nth-child(5)::before,#invoiceTable td:nth-child(5)::before,#longTermTable td:nth-child(5)::before{content:'商品名稱'}
+  #frontTable td:nth-child(6)::before,#reportTable td:nth-child(6)::before,#invoiceTable td:nth-child(6)::before,#longTermTable td:nth-child(6)::before{content:'金額'}
+  #frontTable td:nth-child(7)::before,#reportTable td:nth-child(7)::before,#invoiceTable td:nth-child(7)::before,#longTermTable td:nth-child(7)::before{content:'付款方式'}
+  #frontTable td:nth-child(8)::before,#reportTable td:nth-child(8)::before,#invoiceTable td:nth-child(8)::before,#longTermTable td:nth-child(8)::before{content:'發票／收據'}
+  #frontTable td:nth-child(9)::before,#reportTable td:nth-child(9)::before,#invoiceTable td:nth-child(9)::before,#longTermTable td:nth-child(9)::before{content:'現金抽屜'}
+  #frontTable td:nth-child(10)::before,#reportTable td:nth-child(10)::before,#invoiceTable td:nth-child(10)::before,#longTermTable td:nth-child(10)::before{content:'備註'}
+  #frontTable td:last-child,#reportTable td:last-child,#invoiceTable td:last-child,#longTermTable td:last-child{padding-bottom:0}
+}
+
+.lock-box{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(58,15,20,0.45);z-index:9999;justify-content:center;align-items:center;padding:20px}
+.modal-overlay.active{display:flex}.modal{background:#fffaf3;border-radius:16px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 20px 60px rgba(58,15,20,0.25)}
+.modal h3{margin-bottom:16px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.suggestion-box{position:absolute;background:#fffaf3;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);max-height:200px;overflow-y:auto;z-index:50;width:100%}
+.suggestion-item{padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border)}
+.suggestion-item:hover{background:#fdf1e2}.suggestion-item:last-child{border-bottom:none}
+.relative{position:relative}.hidden{display:none !important}
+.setting-log{font-size:.82rem;color:var(--muted);margin-top:8px;max-height:120px;overflow-y:auto}
+.setting-log-item{padding:4px 0;border-bottom:1px dashed var(--border)}
+.export-panel{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+@media(max-width:680px){.export-panel{grid-template-columns:1fr}}
+.kpi-big{font-size:2rem;font-weight:800}.kpi-label{color:var(--muted);font-size:.85rem}
+.month-selector{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.login-box{max-width:420px;margin:60px auto;padding:24px;background:#fffaf3;border-radius:16px;box-shadow:var(--shadow)}
+.login-box h2{text-align:center;margin-bottom:20px;color:var(--primary)}.login-box .form-group{margin-bottom:16px}
+.version-tag{position:fixed;bottom:10px;right:10px;background:rgba(58,15,20,0.82);color:#fff;padding:6px 12px;border-radius:999px;font-size:.75rem;z-index:300;backdrop-filter:blur(8px)}
+.tab-lg{font-size:1.06rem;padding:14px 24px}
+</style>
+</head>
+<body>
+<div class="version-tag">歆動整合型記帳系統 v2.0</div>
+
+<div id="loginScreen">
+  <div class="login-box">
+    <h2>🔐 歆動整合型記帳系統</h2>
+    <div id="firebaseNotReady" class="alert alert-warning show">Firebase 尚未配置，請先設定 Firebase 專案並將配置填入程式碼中。</div>
+    <div id="loginForm">
+      <div class="form-group">
+        <label>操作人</label>
+        <select id="loginOperator"></select>
+      </div>
+      <div class="form-group" id="managerPasswordWrap">
+        <label>登入密碼</label>
+        <input type="password" id="loginPassword" placeholder="請輸入密碼">
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="doLogin()" style="width:100%">登入</button>
+      </div>
+      <p class="muted" style="margin-top:12px;text-align:center">首次使用請先完成 Firebase 設定。</p>
+    </div>
+  </div>
+</div>
+
+<div id="mainApp" style="display:none">
+  <header>
+    <div>
+      <h1>歆動整合型記帳系統</h1>
+      <div class="sub">目前操作人：<span id="currentOperator"></span> <span id="currentRole"></span></div>
+    </div>
+    <div class="toolbar">
+      <button class="btn btn-success" onclick="showExportPanel()">📥 匯出</button>
+      <button class="btn btn-muted" onclick="backupData()">💾 備份JSON</button>
+      <button class="btn btn-primary" id="importJsonBtn" style="display:none" onclick="triggerRestoreImport()">📤 匯入JSON</button>
+      <input type="file" id="restoreJsonInput" accept="application/json,.json" style="display:none" onchange="restoreData(this)">
+      <button class="btn btn-danger" onclick="clearAllData()">清空全部</button>
+      <button class="btn btn-danger" onclick="doLogout()">登出</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="tabs">
+      <button class="tab-btn tab-lg active" data-tab="frontDeskTab" onclick="switchTab('frontDeskTab')">櫃檯頁</button>
+      <button class="tab-btn tab-lg" data-tab="reportTab" onclick="switchTab('reportTab')">分析總帳</button>
+      <button class="tab-btn tab-lg" data-tab="invoiceTab" onclick="switchTab('invoiceTab')">學費收據管理</button>
+      <button class="tab-btn tab-lg" data-tab="longTermTab" onclick="switchTab('longTermTab')">長期統計</button>
+      <button class="tab-btn tab-lg" data-tab="adminTab" onclick="switchTab('adminTab')">監管後台</button>
+    </div>
+
+    <section id="frontDeskTab" class="tab-panel active">
+      <div id="drawerAlert" class="alert alert-warning"></div>
+      <div class="stats-grid">
+        <div class="stat-box cash-box">
+          <div class="label">櫃檯現金抽屜</div>
+          <div class="number balance" id="drawerBalance">$0</div>
+        </div>
+        <div class="stat-box cash-box">
+          <div class="label">店長保管箱</div>
+          <div class="number warning" id="managerVaultBalance">$0</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">本日總收入（抽屜）</div>
+          <div class="number income" id="todayIncome">$0</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">本日總支出（抽屜）</div>
+          <div class="number expense" id="todayExpense">$0</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">今日筆數（抽屜）</div>
+          <div class="number" id="todayCount">0</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>📌 本月提醒</h2>
+        <div id="frontDeskReminders" class="todo-board"></div>
+      </div>
+
+      <div class="grid">
+        <div>
+          <div class="card">
+            <h2>➕ 新增交易</h2>
+            <form id="transactionForm" onsubmit="return addTransaction(event)">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>交易日期</label>
+                  <input type="date" id="date" required>
+                </div>
+                <div class="form-group">
+                  <label>大分類</label>
+                  <select id="businessType" required onchange="handleTypeChange()"></select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>交易類型</label>
+                  <select id="type" required onchange="handleTypeChange()"></select>
+                </div>
+                <div class="form-group">
+                  <label>類別</label>
+                  <select id="category" required onchange="handleTypeChange()"></select>
+                </div>
+              </div>
+              <div class="form-row-3">
+                <div class="form-group">
+                  <label>金額（NT$）</label>
+                  <input type="number" id="amount" min="0" step="1" required placeholder="自動帶入或手動輸入">
+                </div>
+                <div class="form-group">
+                  <label>付款方式</label>
+                  <select id="method" required onchange="handleMethodChange()"></select>
+                </div>
+                <div class="form-group">
+                  <div class="check-inline" style="padding-top:28px">
+                    <input type="checkbox" id="affectDrawer">
+                    <label for="affectDrawer" style="margin:0">現金抽屜</label>
+                  </div>
+                </div>
+              </div>
+              <div id="transferDetailWrap" class="form-group" style="display:none">
+                <label>付款資訊</label>
+                <input type="text" id="paymentDetail" placeholder="後五碼、平台編號、說明">
+              </div>
+              <div id="transferTargetWrap" class="form-row" style="display:none">
+                <div class="form-group">
+                  <label>移轉方向</label>
+                  <select id="transferDirection">
+                    <option value="drawer_to_vault">抽屜 → 保管箱</option>
+                    <option value="vault_to_drawer">保管箱 → 抽屜</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>銀行動作</label>
+                  <select id="bankAction">
+                    <option value="none">無</option>
+                    <option value="deposit_from_vault">保管箱提領去銀行</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group relative">
+                  <label>對象</label>
+                  <input type="text" id="person" placeholder="學生/廠商/老師" autocomplete="off" oninput="onPersonInput()" onblur="hideSuggestions()">
+                  <div id="personSuggestions" class="suggestion-box" style="display:none"></div>
+                </div>
+                <div class="form-group">
+                  <label>商品名稱（分格輸入）</label>
+                  <textarea id="item" class="item-grid-input" placeholder="可直接分格輸入多項商品\n例如：\n鋼琴課本\n樂理講義\n暑期教材"></textarea>
+                </div>
+              </div>
+              <div class="form-row" id="invoiceBlock">
+                <div class="form-group">
+                  <label id="invoiceFieldLabel">電子發票</label>
+                  <input type="text" id="invoiceStatusDisplay" value="已開" readonly>
+                  <select id="invoiceStatus" onchange="syncInvoiceFieldDisplay()"></select>
+                </div>
+                <div class="form-group">
+                  <label>備註</label>
+                  <input type="text" id="note" placeholder="支出其他說明例如：信用卡號，保養、維修、人力銀行期限">
+                </div>
+              </div>
+              <div class="toolbar">
+                <button class="btn btn-success" type="submit">💾 儲存交易</button>
+                <button class="btn btn-muted" type="button" onclick="resetForm()">清空</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card cash-box" id="managerVaultWithdrawCard" style="display:none">
+            <h3>🏦 店長保管箱提領</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label>提領金額</label>
+                <input type="number" id="withdrawAmount" min="1" step="1" placeholder="輸入提領金額">
+              </div>
+              <div class="form-group">
+                <label>用途說明</label>
+                <input type="text" id="withdrawNote" placeholder="例如：銀行存款">
+              </div>
+            </div>
+            <div class="toolbar">
+              <button class="btn btn-warning" onclick="showWithdrawModal()">🔐 店長密碼驗證後提領</button>
+            </div>
+          </div>
+
+          <div class="card cash-box" id="drawerSettingsCard" style="display:none">
+            <h3>⚙️ 櫃檯設定（僅店長）</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label>抽屜上限金額</label>
+                <input type="number" id="drawerLimit" min="0" step="1">
+              </div>
+              <div class="form-group">
+                <label>初始化抽屜零用金</label>
+                <input type="number" id="initialDrawerCash" min="0" step="1">
+              </div>
+            </div>
+            <div class="toolbar">
+              <button class="btn btn-primary" onclick="saveSettings()">儲存設定</button>
+              <button class="btn btn-warning" onclick="seedInitialCash()">建立初始零用金</button>
+            </div>
+            <div class="setting-log" id="settingsLog"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <h2>📋 交易紀錄</h2>
+            <div class="search-bar">
+              <input type="text" id="frontKeyword" placeholder="關鍵字搜尋" oninput="renderFrontTable()">
+              <input type="date" id="frontStart" onchange="renderFrontTable()">
+              <input type="date" id="frontEnd" onchange="renderFrontTable()">
+              <select id="frontTypeFilter" onchange="renderFrontTable()"></select>
+              <select id="frontOperatorFilter" onchange="renderFrontTable()"></select>
+              <select id="frontCategoryFilter" onchange="renderFrontTable()"></select>
+              <button class="btn btn-muted" onclick="clearFrontFilters()">清除</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>日期</th><th>操作人</th><th>大分類</th><th>類型</th><th>類別</th>
+                    <th>對象</th><th>項目</th><th>金額</th><th>付款</th><th>發票／收據</th><th>抽屜</th><th>備註</th>
+                  </tr>
+                </thead>
+                <tbody id="frontTableBody"></tbody>
+              </table>
+            </div>
+            <div id="frontEmpty" class="empty" style="display:none">尚無紀錄</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="reportTab" class="tab-panel">
+      <div id="reportContent">
+        <div class="stats-grid">
+          <div class="stat-box"><div class="label">本日總收入</div><div class="number income" id="reportTodayIncome">$0</div></div>
+          <div class="stat-box"><div class="label">本日總支出</div><div class="number expense" id="reportTodayExpense">$0</div></div>
+          <div class="stat-box"><div class="label">本月總收入</div><div class="number income" id="reportMonthIncome">$0</div></div>
+          <div class="stat-box"><div class="label">本月總支出</div><div class="number expense" id="reportMonthExpense">$0</div></div>
+          <div class="stat-box"><div class="label">本月總筆數</div><div class="number" id="reportMonthCount">0</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>📅 單月總帳分析</h3>
+            <div class="search-bar" style="grid-template-columns:1fr">
+              <select id="analysisMonthPicker" onchange="renderMonthlyAnalysis()"></select>
+            </div>
+            <div class="analysis-list" id="monthlyLedgerSummary"></div>
+          </div>
+          <div class="card">
+            <h3>🏢 三大分類收支圖表</h3>
+            <div class="muted" style="margin-bottom:10px">依左側「單月總帳分析」所選月份計算</div>
+            <div style="font-weight:800;margin-bottom:8px">收入</div>
+            <div id="bizIncomeChart" style="margin-bottom:16px"></div>
+            <div style="font-weight:800;margin-bottom:8px">支出</div>
+            <div id="bizExpenseChart"></div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>💰 本月類別收入總和</h3>
+            <div class="analysis-list" id="monthlyIncomeByCategory"></div>
+          </div>
+          <div class="card">
+            <h3>📉 本月類別支出總和</h3>
+            <div class="analysis-list" id="monthlyExpenseByCategory"></div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>📊 類別占比</h3>
+            <div class="analysis-list" id="monthlyCategoryShare"></div>
+          </div>
+          <div class="card">
+            <h3>📈 與上月差異最大項目</h3>
+            <div class="analysis-list" id="monthlyTopDiff"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="invoiceTab" class="tab-panel">
+      <div class="card">
+        <h2>🧾 發票預設值設定</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label>月份</label>
+            <select id="invoiceTargetMonth" onchange="loadInvoiceTargets()">
+              <option value="">請選擇月份</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>一般發票預設金額</label>
+            <input type="number" id="targetGeneral" min="0" step="1">
+          </div>
+          <div class="form-group">
+            <label>AB發票預設金額</label>
+            <input type="number" id="targetAb" min="0" step="1">
+          </div>
+        </div>
+        <div class="toolbar">
+          <button class="btn btn-primary" onclick="saveInvoiceTargets()">儲存預設值</button>
+          <button class="btn btn-muted" onclick="clearInvoiceTargets()">清除</button>
+        </div>
+        <div id="savedTargetsList" style="margin-top:12px"></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>📋 發票落差看板</h3>
+          <div id="invoiceDashboard"></div>
+          <div id="invoiceReminders"></div>
+        </div>
+        <div class="card">
+          <h3>📈 發票趨勢</h3>
+          <div id="invoiceTrend"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="adminTab" class="tab-panel">
+      <div class="card">
+        <h3>🔔 固定收支提醒（本月）</h3>
+        <div class="muted" style="margin-bottom:10px">只要本月有一筆對應類別的交易，就視為已完成；用於追蹤房租、Google Workspace、勞健保勞退等每月固定收支。</div>
+        <div class="analysis-list" id="fixedItemsReminderList"></div>
+        <div class="form-row-3" style="margin-top:14px">
+          <div class="form-group">
+            <label>項目名稱</label>
+            <input type="text" id="fixedItemName" placeholder="例如：房租">
+          </div>
+          <div class="form-group">
+            <label>類型</label>
+            <select id="fixedItemType">
+              <option value="expense">支出</option>
+              <option value="income">收入</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>對應類別</label>
+            <input type="text" id="fixedItemCategory" placeholder="需與交易「類別」欄位一致，例如：房租">
+          </div>
+        </div>
+        <div class="toolbar">
+          <button class="btn btn-primary" onclick="addFixedItem()">➕ 新增追蹤項目</button>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>📌 缺件總數</h3>
+          <div class="analysis-list" id="analysisSummary"></div>
+        </div>
+        <div class="card">
+          <h3>📋 全部交易紀錄</h3>
+          <div class="search-bar">
+            <input type="text" id="reportKeyword" placeholder="關鍵字搜尋" oninput="renderReportTable()">
+            <input type="date" id="reportStart" onchange="renderReportTable()">
+            <input type="date" id="reportEnd" onchange="renderReportTable()">
+            <select id="reportTypeFilter" onchange="renderReportTable()"></select>
+            <select id="reportOperatorFilter" onchange="renderReportTable()"></select>
+            <select id="reportCategoryFilter" onchange="renderReportTable()"></select>
+            <button class="btn btn-muted" onclick="clearReportFilters()">清除</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>日期</th><th>操作人</th><th>大分類</th><th>類型</th><th>類別</th>
+                  <th>對象</th><th>項目</th><th>金額</th><th>付款</th><th>發票／收據</th><th>抽屜</th><th>現金流</th><th>備註</th><th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="reportTableBody"></tbody>
+            </table>
+          </div>
+          <div id="reportEmpty" class="empty" style="display:none">尚無紀錄</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>缺件明細</h3>
+        <div id="missingItemsList"></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>🎓 學費與學生分析</h3>
+          <div id="invoiceAnalysis"></div>
+        </div>
+        <div class="card">
+          <h3>🗓️ 旺季／淡季與檢定提醒</h3>
+          <div class="analysis-list" id="businessAnalysis"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="longTermTab" class="tab-panel">
+      <div class="grid-3">
+        <div class="card">
+          <div class="kpi-label">近 3 個月總收入</div>
+          <div class="kpi-big income" id="ltIncome3">$0</div>
+          <div class="kpi-label" style="margin-top:8px">近 3 個月總支出</div>
+          <div class="kpi-big expense" id="ltExpense3">$0</div>
+        </div>
+        <div class="card">
+          <div class="kpi-label">近 6 個月總收入</div>
+          <div class="kpi-big income" id="ltIncome6">$0</div>
+          <div class="kpi-label" style="margin-top:8px">近 6 個月總支出</div>
+          <div class="kpi-big expense" id="ltExpense6">$0</div>
+        </div>
+        <div class="card">
+          <div class="kpi-label">近 12 個月總收入</div>
+          <div class="kpi-big income" id="ltIncome12">$0</div>
+          <div class="kpi-label" style="margin-top:8px">近 12 個月總支出</div>
+          <div class="kpi-big expense" id="ltExpense12">$0</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>📊 逐月收支明細</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>月份</th><th>收入</th><th>支出</th><th>淨額</th><th>筆數</th></tr></thead>
+            <tbody id="monthlyTable"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <h3>💰 各月份重點收入類別總和（近12個月）</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>月份</th><th>學費</th><th>租借教室（租用收入）</th><th>樂器販售</th><th>課本教材販售</th><th>標案收入</th><th>其他收入</th><th>收入合計</th></tr></thead>
+            <tbody id="monthlyIncomeCategoryTable"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <h3>📉 各月份類別支出總和（近12個月）</h3>
+        <div class="table-wrap">
+          <table>
+            <thead id="monthlyExpenseCategoryHead"></thead>
+            <tbody id="monthlyExpenseCategoryTable"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <h3>🔍 月份類別比較</h3>
+        <div class="month-selector">
+          <div class="form-group" style="min-width:160px;margin-bottom:0">
+            <label>月份 A</label>
+            <input type="month" id="ltMonthA" onchange="renderCategoryMonthCompare()">
+          </div>
+          <div class="form-group" style="min-width:160px;margin-bottom:0">
+            <label>月份 B（可留白）</label>
+            <input type="month" id="ltMonthB" onchange="renderCategoryMonthCompare()">
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>類型</th><th>類別</th><th id="ltMonthALabel">月份 A</th><th id="ltMonthBLabel">月份 B</th><th>差異（B－A）</th></tr></thead>
+            <tbody id="categoryCompareTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="modal-overlay" id="withdrawModal">
+  <div class="modal">
+    <h3>🔐 店長保管箱提領驗證</h3>
+    <div class="form-group">
+      <label>店長密碼</label>
+      <input type="password" id="withdrawPassword" placeholder="輸入店長密碼">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal('withdrawModal')">取消</button>
+      <button class="btn btn-warning" onclick="confirmWithdraw()">驗證並提領</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3>✏️ 編輯交易</h3>
+    <form id="editForm" onsubmit="return saveEdit(event)">
+      <input type="hidden" id="editId">
+      <div class="form-row">
+        <div class="form-group"><label>日期</label><input type="date" id="editDate" required></div>
+        <div class="form-group"><label>大分類</label><select id="editBusinessType" onchange="handleEditTypeChange()" required></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>交易類型</label><select id="editType" required onchange="handleEditTypeChange()"></select></div>
+        <div class="form-group"><label>類別</label><select id="editCategory" onchange="handleEditTypeChange()" required></select></div>
+      </div>
+      <div class="form-row-3" id="editTransferWrap">
+        <div class="form-group"><label>金額</label><input type="number" id="editAmount" min="0" step="1" required></div>
+        <div class="form-group"><label>付款方式</label><select id="editMethod" required></select></div>
+        <div class="form-group">
+          <div class="check-inline" style="padding-top:28px">
+            <input type="checkbox" id="editAffectDrawer"><label for="editAffectDrawer" style="margin:0">現金抽屜</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>對象</label><input type="text" id="editPerson"></div>
+        <div class="form-group"><label>商品名稱</label><textarea id="editItem" placeholder="請一項一行輸入"></textarea></div>
+      </div>
+      <div class="form-row" id="editInvoiceBlock">
+        <div class="form-group">
+          <label id="editInvoiceFieldLabel">電子發票</label>
+          <input type="text" id="editInvoiceStatusDisplay" value="已開" readonly>
+          <select id="editInvoiceStatus" onchange="syncEditInvoiceFieldDisplay()"></select>
+        </div>
+        <div class="form-group"><label>備註</label><input type="text" id="editNote" placeholder="支出其他說明例如：信用卡號，保養、維修、人力銀行期限"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-muted" onclick="closeModal('editModal')">取消</button>
+        <button type="submit" class="btn btn-success">儲存修改</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="exportModal">
+  <div class="modal">
+    <h3>📥 匯出紀錄</h3>
+    <div id="exportPasswordWrap">
+      <div class="form-group">
+        <label>店長密碼</label>
+        <input type="password" id="exportPassword" placeholder="僅店長可匯出">
+      </div>
+      <div class="toolbar"><button class="btn btn-primary" onclick="verifyExportPassword()">驗證</button></div>
+    </div>
+    <div id="exportOptions" style="display:none">
+      <div class="export-panel">
+        <div class="form-group"><label>匯出範圍</label><select id="exportScope"><option value="all">全部交易紀錄</option><option value="front">首頁篩選結果</option></select></div>
+        <div class="form-group"><label>開始日期</label><input type="date" id="exportStartDate"></div>
+        <div class="form-group"><label>結束日期</label><input type="date" id="exportEndDate"></div>
+      </div>
+      <div class="export-panel">
+        <div class="form-group"><label>篩選大分類</label><select id="exportBusiness" onchange="syncExportCategoryOptions()"><option value="">全部</option></select></div>
+        <div class="form-group"><label>交易類型</label><select id="exportType" onchange="syncExportCategoryOptions()"><option value="">全部</option><option value="income">收入</option><option value="expense">支出</option><option value="transfer">移轉</option></select></div>
+        <div class="form-group"><label>篩選類別</label><select id="exportCategory"><option value="">全部</option></select></div>
+        <div class="form-group"><label>關鍵字</label><input type="text" id="exportKeyword" placeholder="搜尋對象、項目、備註、付款資訊"></div>
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-success" onclick="doExportCSV()">匯出 CSV</button>
+        <button class="btn btn-muted" onclick="closeModal('exportModal')">取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBu05miM9GkpT2_QTWoSdGElNbAutCvMeM",
+  authDomain: "xindong-accounting.firebaseapp.com",
+  projectId: "xindong-accounting",
+  storageBucket: "xindong-accounting.firebasestorage.app",
+  messagingSenderId: "647293911344",
+  appId: "1:647293911344:web:296fbf1232960ca67388f5"
+};
+
+let db, auth;
+let firebaseReady = false;
+
+function initFirebase(){
+  if(window.firebaseReady && window.firebaseDb && window.firebaseAuth){
+    db = window.firebaseDb;
+    auth = window.firebaseAuth;
+    firebaseReady = true;
+    console.log('Firebase connected from module');
+  } else {
+    console.error('Firebase module not loaded yet');
+  }
+}
+
+// Wait for module to load
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', initFirebase);
+} else {
+  initFirebase();
+}
+// Also retry after a short delay in case module loads slowly
+setTimeout(initFirebase, 500);
+
+const OPERATORS = ['店長','w-ting','櫃檯人員01','行政人員01'];
+const LOGIN_PASSWORDS = { '店長':'5588', 'w-ting':'0000' };
+const FULL_VIEW_OPERATORS = ['w-ting'];
+const SELF_VIEW_OPERATORS = ['櫃檯人員01','行政人員01'];
+const SHARED_VISIBLE_INCOME = {
+  '歆動補習班': ['學費'],
+  '歆動公司': ['租借教室','店內商品販售','樂器販售','課本教材販售','檢定報名費']
+};
+const BUSINESS_TYPES = ['歆動補習班','歆動公司','穿越時空'];
+const TYPE_OPTIONS = [{value:'income',label:'收入'},{value:'expense',label:'支出'},{value:'transfer',label:'移轉'}];
+const PAYMENT_METHODS = [{value:'cash',label:'現金'},{value:'transfer',label:'轉帳'},{value:'online',label:'線上付款'},{value:'manager_cash',label:'店長現金',managerOnly:true},{value:'manager_card',label:'店長信用卡',managerOnly:true}];
+const CATEGORIES = {
+  '歆動補習班': {
+    income: [{name:'學費', managerOnly:false}],
+    expense: [{name:'房租', managerOnly:true},{name:'老師薪資', managerOnly:true},{name:'匯出檢定費用', managerOnly:false},{name:'退費', managerOnly:false}]
+  },
+  '歆動公司': {
+    income: [
+      {name:'租借教室', managerOnly:false},
+      {name:'店內商品販售', managerOnly:false},
+      {name:'樂器販售', managerOnly:false},
+      {name:'課本教材販售', managerOnly:false},
+      {name:'檢定報名費', managerOnly:false},
+      {name:'蝦皮電商', managerOnly:false},
+      {name:'錄音室', managerOnly:false},
+      {name:'版稅', managerOnly:false},
+      {name:'標案收入', managerOnly:true}
+    ],
+    expense: [
+      {name:'郵資', managerOnly:false},
+      {name:'快遞費', managerOnly:false},
+      {name:'影印費', managerOnly:false},
+      {name:'雜支', managerOnly:false},
+      {name:'電話費', managerOnly:false},
+      {name:'網路', managerOnly:false},
+      {name:'飲水機', managerOnly:false},
+      {name:'維修', managerOnly:false},
+      {name:'保養', managerOnly:false},
+      {name:'罰單', managerOnly:true},
+      {name:'房租', managerOnly:true},
+      {name:'googleworkspace', managerOnly:true},
+      {name:'勞保', managerOnly:true},
+      {name:'勞退', managerOnly:true},
+      {name:'健保', managerOnly:false},
+      {name:'消防檢查', managerOnly:true},
+      {name:'押標金手續費', managerOnly:true},
+      {name:'律師/代書費', managerOnly:true},
+      {name:'記帳費', managerOnly:true},
+      {name:'人力銀行', managerOnly:true},
+      {name:'行銷費用', managerOnly:true},
+      {name:'薪資', managerOnly:true},
+      {name:'訂補習班貨', managerOnly:true},
+      {name:'系統費', managerOnly:true},
+      {name:'訂標案貨', managerOnly:true}
+    ]
+  },
+  '穿越時空': {
+    income: [
+      {name:'獎金', managerOnly:false},
+      {name:'收入', managerOnly:false}
+    ],
+    expense: [
+      {name:'訂貨', managerOnly:false},
+      {name:'郵寄', managerOnly:false},
+      {name:'雜支', managerOnly:false},
+      {name:'獎金', managerOnly:false}
+    ]
+  }
+};
+const TRANSFER_CATEGORIES = ['櫃檯轉入店長保管箱','店長保管箱轉回櫃檯','店長保管箱提領銀行存款','櫃檯初始零用金'];
+const DEFAULT_RECURRING_ITEMS = [
+  {id:'rent', name:'房租', type:'expense', category:'房租'},
+  {id:'workspace', name:'Google Workspace', type:'expense', category:'googleworkspace'},
+  {id:'laborins', name:'勞保', type:'expense', category:'勞保'},
+  {id:'healthins', name:'健保', type:'expense', category:'健保'},
+  {id:'pension', name:'勞退', type:'expense', category:'勞退'}
+];
+
+let currentUser = { name: '', role: '', uid: '' };
+let transactions = [];
+let students = [];
+let settings = { drawerLimit: 5000, drawerBalance: 0, managerVaultBalance: 0 };
+let invoiceTargets = {};
+let recurringItems = DEFAULT_RECURRING_ITEMS.slice();
+let settingsAudit = [];
+let reportUnlocked = true;
+let suggestionTimer = null;
+
+function money(n){ return '$' + Number(n||0).toLocaleString(); }
+function fmtDate(d){ const x=new Date(d); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); }
+function fmtMonth(d){ const x=new Date(d); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0'); }
+function todayStr(){ return fmtDate(new Date()); }
+function monthStr(){ return fmtMonth(new Date()); }
+
+function init(){
+  // Always show login form immediately
+  document.getElementById('loginForm').style.display='block';
+  
+  if(!window.firebaseReady){
+    document.getElementById('firebaseNotReady').classList.add('show');
+    // Retry every 500ms for up to 10 seconds
+    let retries = 0;
+    const checkInterval = setInterval(function(){
+      retries++;
+      if(window.firebaseReady && window.firebaseDb && window.firebaseAuth){
+        clearInterval(checkInterval);
+        db = window.firebaseDb;
+        auth = window.firebaseAuth;
+        firebaseReady = true;
+        document.getElementById('firebaseNotReady').classList.remove('show');
+      } else if(retries > 20){
+        clearInterval(checkInterval);
+        document.getElementById('firebaseNotReady').textContent = 'Firebase 連線逾時，請檢查網路或 Firebase 設定。';
+      }
+    }, 500);
+  } else {
+    document.getElementById('firebaseNotReady').classList.remove('show');
+  }
+  
+  fillSelect('loginOperator', OPERATORS);
+  const opEl = document.getElementById('loginOperator');
+  opEl.addEventListener('change', function(){
+    document.getElementById('managerPasswordWrap').style.display = LOGIN_PASSWORDS[this.value] ? 'block' : 'none';
+  });
+  // Set initial visibility based on current selection
+  document.getElementById('managerPasswordWrap').style.display = LOGIN_PASSWORDS[opEl.value] ? 'block' : 'none';
+}
+
+function fillSelect(id, items, values){
+  const el=document.getElementById(id);
+  el.innerHTML = items.map((it,i)=>'<option value="'+(values?values[i]:it)+'">'+it+'</option>').join('');
+}
+
+function doLogin(){
+  const op = document.getElementById('loginOperator').value;
+  if(LOGIN_PASSWORDS[op]){
+    const pw = document.getElementById('loginPassword').value;
+    if(pw!==LOGIN_PASSWORDS[op]){ alert('密碼錯誤'); return; }
+  }
+  currentUser = { name: op, role: op==='店長'?'manager':'staff', uid: 'u_'+Date.now() };
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('mainApp').style.display='block';
+  document.getElementById('currentOperator').textContent = currentUser.name;
+  document.getElementById('currentRole').textContent = currentUser.role==='manager'?'(店長)':'(人員)';
+  setupUI();
+  loadData();
+  // For non-managers, auto-unlock only frontDeskTab
+  if(currentUser.role!=='manager'){
+    switchTab('frontDeskTab');
+  }
+}
+
+function doLogout(){ location.reload(); }
+
+function setupUI(){
+  document.getElementById('date').valueAsDate = new Date();
+  document.getElementById('date').value = todayStr();
+  fillSelect('businessType', BUSINESS_TYPES);
+  fillSelect('type', TYPE_OPTIONS.map(x=>x.label), TYPE_OPTIONS.map(x=>x.value));
+  const methodOptions = PAYMENT_METHODS.filter(x=>!x.managerOnly || currentUser.role==='manager');
+  fillSelect('method', methodOptions.map(x=>x.label), methodOptions.map(x=>x.value));
+  fillTypeFilter('frontTypeFilter'); fillTypeFilter('reportTypeFilter');
+  fillOperatorFilter('frontOperatorFilter'); fillOperatorFilter('reportOperatorFilter');
+  fillCategoryFilter('frontCategoryFilter'); fillCategoryFilter('reportCategoryFilter');
+  document.getElementById('businessType').addEventListener('change', handleTypeChange);
+  handleTypeChange(); handleMethodChange();
+  if(currentUser.role==='manager'){
+    document.getElementById('drawerSettingsCard').style.display='block';
+    document.getElementById('managerVaultWithdrawCard').style.display='block';
+    document.getElementById('importJsonBtn').style.display='inline-flex';
+  }
+  // Lock non-staff tabs for non-managers
+  if(currentUser.role!=='manager'){
+    document.querySelectorAll('.tab-btn[data-tab="reportTab"], .tab-btn[data-tab="longTermTab"], .tab-btn[data-tab="adminTab"]').forEach(b=>{
+      b.style.opacity='0.4'; b.style.pointerEvents='none'; b.title='僅店長可進入';
+    });
+    const invoiceTabBtn=document.querySelector('.tab-btn[data-tab="invoiceTab"]');
+    if(invoiceTabBtn){ invoiceTabBtn.style.opacity='1'; invoiceTabBtn.style.pointerEvents='auto'; invoiceTabBtn.title=''; }
+  }
+}
+
+function fillTypeFilter(id){ const el=document.getElementById(id); el.innerHTML='<option value="">全部類型</option>'+TYPE_OPTIONS.map(x=>'<option value="'+x.value+'">'+x.label+'</option>').join(''); }
+function fillOperatorFilter(id){ const el=document.getElementById(id); el.innerHTML='<option value="">全部操作人</option>'+OPERATORS.map(op=>'<option value="'+op+'">'+op+'</option>').join(''); }
+function fillCategoryFilter(id){
+  const el=document.getElementById(id);
+  const isManager = currentUser.role === 'manager';
+  let cats = [];
+  Object.values(CATEGORIES).forEach(biz => {
+    Object.values(biz).forEach(typeCats => {
+      typeCats.forEach(c => {
+        if(!c.managerOnly || isManager) cats.push(c.name);
+      });
+    });
+  });
+  cats = [...new Set(cats)].sort();
+  el.innerHTML = '<option value="">全部類別</option>' + cats.map(c=>'<option value="'+c+'">'+c+'</option>').join('');
+}
+
+function handleTypeChange(){
+  const type=document.getElementById('type').value;
+  const biz=document.getElementById('businessType').value;
+  const cat=document.getElementById('category');
+  let list=[];
+  if(type==='transfer'){
+    list=TRANSFER_CATEGORIES;
+  } else {
+    const bizCats = CATEGORIES[biz] || {};
+    const typeCats = bizCats[type] || [];
+    const isManager = currentUser.role === 'manager';
+    list = typeCats.filter(c => !c.managerOnly || isManager).map(c => c.name);
+  }
+  const previous = cat.value;
+  cat.innerHTML=list.map(it=>'<option value="'+it+'">'+it+'</option>').join('');
+  if(list.includes(previous)) cat.value = previous;
+  document.getElementById('transferTargetWrap').style.display = type==='transfer'?'grid':'none';
+  if(type==='transfer'){
+    document.getElementById('affectDrawer').checked=true;
+    document.getElementById('method').value='cash';
+  }
+  document.getElementById('invoiceBlock').style.display = type==='transfer'?'none':'block';
+  renderInvoiceSelect('invoiceStatus','invoiceFieldLabel','invoiceStatusDisplay',{
+    businessType:biz,
+    type:type,
+    category:cat.value,
+    invoiceStatus:document.getElementById('invoiceStatus').value
+  });
+  handleMethodChange();
+}
+
+
+function handleMethodChange(){
+  const type=document.getElementById('type').value;
+  const method=document.getElementById('method').value;
+  document.getElementById('transferDetailWrap').style.display = (method==='transfer'||method==='online'||method==='manager_card')?'block':'none';
+}
+
+
+function isTuitionReceiptTx(tx){
+  return tx.businessType==='歆動補習班' && tx.type==='income' && tx.category==='學費';
+}
+function isExpenseTx(tx){
+  return tx.type==='expense';
+}
+function isTutoringRefundTx(tx){
+  return tx.businessType==='歆動補習班' && tx.type==='expense' && tx.category==='退費';
+}
+function isNoInvoiceTransferTx(tx){
+  return tx.type==='transfer' && ['櫃檯轉入店長保管箱','店長保管箱提領銀行存款'].includes(tx.category);
+}
+function invoiceOptionsFor(tx){
+  if(isTuitionReceiptTx(tx)) return [['ab','AB'],['general','一般']];
+  if(isTutoringRefundTx(tx)) return [['pending','未開'],['received_receipt','已開收據'],['none','不開']];
+  if(isNoInvoiceTransferTx(tx)) return [['none','不開']];
+  if(isExpenseTx(tx)) return [['pending','未收到發票'],['received_invoice','已收到發票'],['received_receipt','已收到收據'],['unreceived_receipt','未收到收據'],['none','不開']];
+  return [['general','已開'],['pending','待開'],['receipt','僅收據']];
+}
+function defaultInvoiceStatus(tx){
+  if(isTuitionReceiptTx(tx)) return 'ab';
+  if(isTutoringRefundTx(tx)) return 'received_receipt';
+  if(isNoInvoiceTransferTx(tx)) return 'none';
+  if(isExpenseTx(tx)) return 'pending';
+  return 'general';
+}
+function invoiceFieldLabel(tx){
+  return isTuitionReceiptTx(tx) ? '收據' : '電子發票';
+}
+function invoiceDisplayText(tx){
+  const map={ab:'AB',general:'一般',pending:'待開',receipt:'僅收據',received_invoice:'已收到發票',received_receipt:'已收到收據',unreceived_receipt:'未收到收據',none:'不開'};
+  if(['店長保管箱提領銀行存款','櫃檯轉入店長保管箱'].includes(tx.category)) return '不開';
+  if(tx.type==='expense' && tx.invoiceStatus==='pending') return '未收到發票';
+  if(tx.type==='income' && !isTuitionReceiptTx(tx) && tx.invoiceStatus==='general') return '已開';
+  return map[tx.invoiceStatus] || '';
+}
+function renderInvoiceSelect(selectId,labelId,displayId,tx){
+  const sel=document.getElementById(selectId);
+  const label=document.getElementById(labelId);
+  const display=document.getElementById(displayId);
+  if(!sel) return;
+  const opts=invoiceOptionsFor(tx);
+  sel.innerHTML=opts.map(([v,t])=>'<option value="'+v+'">'+t+'</option>').join('');
+  const next = opts.some(([v])=>v===tx.invoiceStatus) ? tx.invoiceStatus : defaultInvoiceStatus(tx);
+  sel.value = next;
+  if(label) label.textContent = invoiceFieldLabel(tx);
+  if(display) display.value = invoiceDisplayText({businessType:tx.businessType,type:tx.type,category:tx.category,invoiceStatus:next});
+}
+function syncInvoiceFieldDisplay(){
+  const tx={
+    businessType:document.getElementById('businessType')?.value || '',
+    type:document.getElementById('type')?.value || '',
+    category:document.getElementById('category')?.value || '',
+    invoiceStatus:document.getElementById('invoiceStatus')?.value || ''
+  };
+  const label=document.getElementById('invoiceFieldLabel');
+  const display=document.getElementById('invoiceStatusDisplay');
+  if(label) label.textContent = invoiceFieldLabel(tx);
+  if(display) display.value = invoiceDisplayText(tx);
+}
+
+function syncEditInvoiceFieldDisplay(){
+  const tx={
+    businessType:document.getElementById('editBusinessType')?.value || '',
+    type:document.getElementById('editType')?.value || '',
+    category:document.getElementById('editCategory')?.value || '',
+    invoiceStatus:document.getElementById('editInvoiceStatus')?.value || ''
+  };
+  const label=document.getElementById('editInvoiceFieldLabel');
+  const display=document.getElementById('editInvoiceStatusDisplay');
+  if(label) label.textContent = invoiceFieldLabel(tx);
+  if(display) display.value = invoiceDisplayText(tx);
+}
+
+function resetForm(){
+  document.getElementById('transactionForm').reset();
+  document.getElementById('date').value = todayStr();
+  document.getElementById('businessType').value=BUSINESS_TYPES[0];
+  document.getElementById('type').value='income';
+  const invDisplay = document.getElementById('invoiceStatusDisplay'); if(invDisplay) invDisplay.value = "已開";
+  handleTypeChange(); handleMethodChange();
+  const lineTotal=document.getElementById('lineTotal'); if(lineTotal) lineTotal.value='$0';
+}
+
+function onPersonInput(){
+  const val=document.getElementById('person').value.trim().toLowerCase();
+  const box=document.getElementById('personSuggestions');
+  if(!val||val.length<1){ box.style.display='none'; return; }
+  clearTimeout(suggestionTimer);
+  suggestionTimer = setTimeout(()=>{
+    const matches = students.filter(s=>s.toLowerCase().includes(val)).slice(0,6);
+    if(matches.length){ 
+      box.innerHTML=matches.map(s=>{
+        const safeName = s.replace(/"/g,'&quot;').replace(/'/g,"\\'");
+        return '<div class="suggestion-item" onclick="selectSuggestion(\''+safeName+'\')">'+s+'</div>';
+      }).join(''); 
+      box.style.display='block'; 
+    }
+    else box.style.display='none';
+  }, 150);
+}
+
+function hideSuggestions(){ setTimeout(()=>{ document.getElementById('personSuggestions').style.display='none'; }, 200); }
+function selectSuggestion(name){ document.getElementById('person').value=name; document.getElementById('personSuggestions').style.display='none'; }
+
+function addTransaction(e){
+  e.preventDefault();
+  const type=document.getElementById('type').value;
+  const amount=Number(document.getElementById('amount').value||0);
+  if(amount<=0){ alert('金額需大於0'); return false; }
+  const tx={
+    id: Date.now().toString()+Math.random().toString(36).slice(2,8),
+    date: document.getElementById('date').value,
+    operator: currentUser.name,
+    businessType: document.getElementById('businessType').value,
+    type,
+    category: document.getElementById('category').value,
+    method: document.getElementById('method').value,
+    amount,
+    affectDrawer: document.getElementById('affectDrawer').checked,
+    paymentDetail: document.getElementById('paymentDetail').value.trim(),
+    transferDirection: document.getElementById('transferDirection').value,
+    bankAction: document.getElementById('bankAction').value,
+    person: document.getElementById('person').value.trim(),
+    item: document.getElementById('item').value.trim(),
+    invoiceStatus: document.getElementById('invoiceStatus').value || defaultInvoiceStatus({businessType:document.getElementById('businessType').value,type:document.getElementById('type').value,category:document.getElementById('category').value}),
+    note: document.getElementById('note').value.trim(),
+    createdAt: new Date().toISOString()
+  };
+  if((tx.method==='cash'||tx.method==='manager_cash')&&tx.type==='income'&&!tx.affectDrawer){
+    const proceed = confirm('付款方式是現金，但沒有勾選現金抽屜。是否仍要繼續？');
+    if(!proceed) return false;
+  }
+  tx.invoiceStatus = document.getElementById('invoiceStatus').value || defaultInvoiceStatus(tx);
+  const before=captureBalances();
+  applyCashFlow(tx, true);
+  transactions.unshift(tx);
+  saveTransaction(tx);
+  persistBalanceDelta(before);
+  addStudentName(tx.person);
+  refreshAll();
+  resetForm();
+  return false;
+}
+
+function applyCashFlow(tx, isAdding){
+  const factor=isAdding?1:-1;
+  const amt=Number(tx.amount||0)*factor;
+  if(tx.type==='income'&&(tx.method==='cash'||tx.method==='manager_cash')&&tx.affectDrawer) settings.drawerBalance += amt;
+  if(tx.type==='expense'&&(tx.method==='cash'||tx.method==='manager_cash')&&tx.affectDrawer) settings.drawerBalance -= Number(tx.amount||0)*factor;
+  if(tx.type==='transfer'){
+    if(tx.category==='櫃檯初始零用金'){ settings.drawerBalance += amt; return; }
+    if(tx.bankAction==='deposit_from_vault'){ settings.managerVaultBalance -= Number(tx.amount||0)*factor; return; }
+    if(tx.transferDirection==='drawer_to_vault'){ settings.drawerBalance -= Number(tx.amount||0)*factor; settings.managerVaultBalance += Number(tx.amount||0)*factor; }
+    if(tx.transferDirection==='vault_to_drawer'){ settings.managerVaultBalance -= Number(tx.amount||0)*factor; settings.drawerBalance += Number(tx.amount||0)*factor; }
+  }
+}
+
+function addStudentName(name){
+  if(!name) return;
+  if(!students.includes(name)){
+    students.push(name);
+    if(window.firebaseDb) window.firestoreSetDoc(window.firestoreDoc(window.firebaseDb, 'students', encodeURIComponent(name)), {name, count:1, lastUsed:new Date().toISOString()});
+  }
+}
+
+// Each transaction is stored as its own Firestore document (transactions/{id}).
+// This matters: writes only ever touch the one document being added/edited/deleted,
+// so a browser tab that's been open a while (and hasn't reloaded newer data from
+// other devices) can never overwrite everyone else's records by re-saving a stale
+// full list.
+function saveTransaction(tx){
+  if(!window.firebaseDb) return;
+  window.firestoreSetDoc(window.firestoreDoc(window.firebaseDb, 'transactions', String(tx.id)), tx);
+}
+
+function deleteTransactionDoc(id){
+  if(!window.firebaseDb) return;
+  window.firestoreDeleteDoc(window.firestoreDoc(window.firebaseDb, 'transactions', String(id)));
+}
+
+// Deletes every existing transaction document and writes the given list back,
+// batched in chunks (Firestore caps a batch at 500 operations). Only used for
+// explicit full-replace actions (restore from backup, clear all data).
+async function replaceAllTransactions(list){
+  if(!window.firebaseDb) return;
+  const dbRef=window.firebaseDb;
+  const snap=await window.firestoreGetDocs(window.firestoreCollection(dbRef, 'transactions'));
+  const ops=[];
+  snap.forEach(d=>ops.push({type:'delete', ref:d.ref}));
+  list.forEach(tx=>ops.push({type:'set', ref:window.firestoreDoc(dbRef, 'transactions', String(tx.id)), data:tx}));
+  const CHUNK=400;
+  for(let i=0;i<ops.length;i+=CHUNK){
+    const batch=window.firestoreWriteBatch();
+    ops.slice(i,i+CHUNK).forEach(op=>{ op.type==='delete' ? batch.delete(op.ref) : batch.set(op.ref, op.data); });
+    await batch.commit();
+  }
+}
+
+function saveSettingsToFirestore(){
+  if(!window.firebaseDb) return;
+  window.firestoreSetDoc(window.firestoreDoc(window.firebaseDb, 'settings', 'global'), settings);
+}
+
+function captureBalances(){
+  return {drawerBalance:settings.drawerBalance, managerVaultBalance:settings.managerVaultBalance};
+}
+
+// Pushes only the *change* in drawer/vault balance since `before`, using Firestore's
+// atomic increment instead of overwriting the whole settings doc with this session's
+// (possibly stale) numbers.
+function persistBalanceDelta(before){
+  if(!window.firebaseDb) return;
+  const deltaDrawer=settings.drawerBalance-before.drawerBalance;
+  const deltaVault=settings.managerVaultBalance-before.managerVaultBalance;
+  if(!deltaDrawer && !deltaVault) return;
+  const updates={};
+  if(deltaDrawer) updates.drawerBalance=window.firestoreIncrement(deltaDrawer);
+  if(deltaVault) updates.managerVaultBalance=window.firestoreIncrement(deltaVault);
+  window.firestoreSetDoc(window.firestoreDoc(window.firebaseDb, 'settings', 'global'), updates, {merge:true});
+}
+
+function loadData(){
+  if(!window.firebaseDb){ alert('Firebase 未連線，使用離線模式'); return; }
+  window.firestoreGetDoc(window.firestoreDoc(window.firebaseDb, 'settings', 'global')).then(docSnap=>{
+    if(docSnap.exists()){ settings=Object.assign({drawerLimit:5000,drawerBalance:0,managerVaultBalance:0}, docSnap.data()); }
+    document.getElementById('drawerLimit').value=settings.drawerLimit;
+    document.getElementById('initialDrawerCash').value=settings.drawerBalance||'';
+  });
+  window.firestoreGetDocs(window.firestoreCollection(window.firebaseDb, 'transactions')).then(snap=>{
+    const list=[];
+    snap.forEach(d=>list.push(d.data()));
+    transactions=list;
+    refreshAll();
+  });
+  window.firestoreGetDocs(window.firestoreCollection(window.firebaseDb, 'students')).then(snap=>{
+    students=[];
+    snap.forEach(d=>students.push(d.data().name));
+  });
+  window.firestoreGetDoc(window.firestoreDoc(window.firebaseDb, 'settings', 'invoiceTargets')).then(docSnap=>{
+    if(docSnap.exists()) invoiceTargets=docSnap.data()||{};
+  });
+  window.firestoreGetDoc(window.firestoreDoc(window.firebaseDb, 'settings', 'recurringItems')).then(docSnap=>{
+    if(docSnap.exists() && Array.isArray(docSnap.data().items)) recurringItems=docSnap.data().items;
+    renderFixedItemsReminder();
+  });
+  const q = window.firestoreQuery(window.firestoreCollection(window.firebaseDb, 'settingsAudit'), window.firestoreOrderBy('timestamp','desc'), window.firestoreLimit(20));
+  window.firestoreGetDocs(q).then(snap=>{
+    settingsAudit=[];
+    snap.forEach(d=>settingsAudit.push(d.data()));
+    renderSettingsLog();
+  });
+}
+
+function saveSettings(){
+  const oldLimit=settings.drawerLimit;
+  const oldBalance=settings.drawerBalance;
+  settings.drawerLimit=Number(document.getElementById('drawerLimit').value||0);
+  const newBalance=Number(document.getElementById('initialDrawerCash').value||0);
+  if(newBalance!==oldBalance) settings.drawerBalance=newBalance;
+  saveSettingsToFirestore();
+  logSettingsChange('修改設定', {drawerLimit:oldLimit, drawerBalance:oldBalance}, {drawerLimit:settings.drawerLimit, drawerBalance:settings.drawerBalance});
+  refreshAll();
+  alert('設定已儲存');
+}
+
+function seedInitialCash(){
+  const amount=Number(document.getElementById('initialDrawerCash').value||0);
+  if(amount<=0){ alert('請輸入初始零用金'); return; }
+  const tx={id:Date.now().toString()+Math.random().toString(36).slice(2,8),date:todayStr(),operator:currentUser.name,businessType:'歆動補習班',type:'transfer',category:'櫃檯初始零用金',method:'cash',amount,affectDrawer:true,paymentDetail:'',transferDirection:'vault_to_drawer',bankAction:'none',person:'',item:'建立櫃檯初始零用金',invoiceStatus:'pending',note:'系統建立',createdAt:new Date().toISOString()};
+  const before=captureBalances();
+  applyCashFlow(tx,true);
+  transactions.unshift(tx);
+  saveTransaction(tx);
+  persistBalanceDelta(before);
+  refreshAll();
+  alert('已建立初始零用金');
+}
+
+function logSettingsChange(action, oldVal, newVal){
+  const log={action, operator:currentUser.name, timestamp:new Date().toISOString(), oldVal, newVal};
+  settingsAudit.unshift(log);
+  if(window.firebaseDb) window.firestoreAddDoc(window.firestoreCollection(window.firebaseDb, 'settingsAudit'), log);
+  renderSettingsLog();
+}
+
+function renderSettingsLog(){
+  const el=document.getElementById('settingsLog');
+  if(!settingsAudit.length){ el.innerHTML=''; return; }
+  el.innerHTML = settingsAudit.slice(0,10).map(l=>'<div class="setting-log-item">'+fmtDate(l.timestamp)+' '+l.operator+' '+l.action+'</div>').join('');
+}
+
+function showWithdrawModal(){
+  const amt=Number(document.getElementById('withdrawAmount').value||0);
+  if(amt<=0){ alert('請輸入提領金額'); return; }
+  if(amt>settings.managerVaultBalance){ alert('保管箱餘額不足'); return; }
+  document.getElementById('withdrawModal').classList.add('active');
+  document.getElementById('withdrawPassword').value='';
+}
+
+function confirmWithdraw(){
+  const pw=document.getElementById('withdrawPassword').value;
+  if(pw!=='5588'){ alert('店長密碼錯誤'); return; }
+  const amt=Number(document.getElementById('withdrawAmount').value||0);
+  const note=document.getElementById('withdrawNote').value.trim()||'銀行存款';
+  const tx={id:Date.now().toString()+Math.random().toString(36).slice(2,8),date:todayStr(),operator:currentUser.name,businessType:'歆動補習班',type:'transfer',category:'店長保管箱提領銀行存款',method:'cash',amount:amt,affectDrawer:false,paymentDetail:'',transferDirection:'vault_to_drawer',bankAction:'deposit_from_vault',person:'',item:note,invoiceStatus:'none',note:'店長保管箱提領',createdAt:new Date().toISOString()};
+  const before=captureBalances();
+  applyCashFlow(tx,true);
+  transactions.unshift(tx);
+  saveTransaction(tx);
+  persistBalanceDelta(before);
+  refreshAll();
+  closeModal('withdrawModal');
+  document.getElementById('withdrawAmount').value='';
+  document.getElementById('withdrawNote').value='';
+  alert('提領完成');
+}
+
+function updateStats(){
+  const today=todayStr(), month=monthStr();
+  let ti=0, te=0, tc=0, rti=0, rte=0, mi=0, me=0, mc=0;
+  transactions.forEach(tx=>{
+    const isToday=tx.date===today, isMonth=tx.date.startsWith(month);
+    if(tx.affectDrawer&&tx.type==='income'&&(tx.method==='cash'||tx.method==='manager_cash')&&isToday) ti+=tx.amount;
+    if(tx.affectDrawer&&tx.type==='expense'&&(tx.method==='cash'||tx.method==='manager_cash')&&isToday) te+=tx.amount;
+    if(tx.affectDrawer&&isToday) tc++;
+    if(isToday&&tx.type==='income') rti+=tx.amount;
+    if(isToday&&tx.type==='expense') rte+=tx.amount;
+    if(isMonth&&tx.type==='income') mi+=tx.amount;
+    if(isMonth&&tx.type==='expense') me+=tx.amount;
+    if(isMonth&&(tx.type==='income'||tx.type==='expense')) mc++;
+  });
+  setText('drawerBalance', money(settings.drawerBalance));
+  setText('managerVaultBalance', money(settings.managerVaultBalance));
+  setText('todayIncome', money(ti)); setText('todayExpense', money(te)); setText('todayCount', tc);
+  setText('reportTodayIncome', money(rti)); setText('reportTodayExpense', money(rte));
+  setText('reportMonthIncome', money(mi)); setText('reportMonthExpense', money(me)); setText('reportMonthCount', mc);
+  updateDrawerAlert();
+  renderFrontDeskReminders();
+}
+
+function updateDrawerAlert(){
+  const el=document.getElementById('drawerAlert');
+  if(settings.drawerBalance>settings.drawerLimit&&settings.drawerLimit>0){
+    el.textContent='提醒：櫃檯現金抽屜超出設定值 '+money(settings.drawerBalance-settings.drawerLimit)+'，建議轉入店長保管箱。';
+    el.classList.add('show');
+  } else el.classList.remove('show');
+}
+
+function renderFrontDeskReminders(){
+  const el=document.getElementById('frontDeskReminders');
+  if(!el) return;
+  const today=new Date();
+  const month=today.getMonth()+1;
+  const year=today.getFullYear();
+  const todayStart=new Date(year,today.getMonth(),today.getDate());
+  const currentMonthKey=today.toISOString().slice(0,7);
+  const seasonLabel=(month===7||month===8)?'本月屬暑期旺季，請同步留意滿班率、學費回收與報名名單。':(month===1||month===2)?'本月屬寒假／春節調整期，請優先追蹤補課、停課與延後繳費。':(month===3||month===9)?'本月接近開學季，續班、新生與課表異動會特別密集。':'本月屬一般月份，建議提前整理下一波招生與檢定名單。';
+  const monthlyHints={
+    1:'一月通常進入寒假與春節前協調期，請先確認停課、補課、請假與家長通知。',
+    2:'二月多半仍在寒假或春節後調整期，請追蹤回班、補課與延後繳費安排。',
+    3:'三月進入開學後穩定期，適合檢查續班、新生適應與班表是否需要微調。',
+    4:'四月常是檢定與一般課程並行期，請提前整理報名名單與課務銜接。',
+    5:'五月接近期中後段，適合提早確認暑期班意願、續班規劃與檢定練習進度。',
+    6:'六月已接近期末與暑假前準備期，請開始整理暑期班、續班與檢定名單。',
+    7:'七月進入暑期旺季，請同步追蹤暑期班到課、補課安排與學費收款節奏。',
+    8:'八月仍屬暑期課務高峰，同時要開始銜接九月開學前的續班與排課準備。',
+    9:'九月接近或進入開學季，請優先確認新舊生班表、續班與課程銜接。',
+    10:'十月課務進入相對穩定期，適合補追前月未完成事項並準備下一輪檢定規劃。',
+    11:'十一月適合整理年底檢定、續班意願與寒假前課務安排，避免年底集中處理。',
+    12:'十二月進入年底與寒假前準備期，請提早確認檢定、停課、補課與春節前通知。'
+  };
+  const holidayHint=monthlyHints[month] || '本月沒有特殊節令尖峰，建議提前準備下一波課務調整。';
+  const signupWindows=[
+    {title:'IPPEC 演奏檢定', windows:[{month:4, day:15}]},
+    {title:'IPPEC 樂理檢定', windows:[{month:12, day:15},{month:9, day:1}]},
+    {title:'RSL Awards A 梯次', windows:[{month:3, day:1}]},
+    {title:'RSL Awards B 梯次', windows:[{month:9, day:1}]}
+  ];
+  let currentMonthWindow=null;
+  let nearest={title:'尚無資料', diff:null};
+  signupWindows.forEach(item=>{
+    item.windows.forEach(w=>{
+      if(!currentMonthWindow && w.month===month) currentMonthWindow=item.title;
+      [year,year+1].forEach(y=>{
+        const d=new Date(y,w.month-1,w.day);
+        const diff=Math.ceil((d-todayStart)/(1000*60*60*24));
+        if(diff>=0 && (nearest.diff===null || diff<nearest.diff)) nearest={title:item.title,diff};
+      });
+    });
+  });
+  const incomeThisMonth=transactions.filter(x=>x.type==='income' && (x.date||'').slice(0,7)===currentMonthKey).reduce((sum,x)=>sum+Number(x.amount||0),0);
+  const reminderItems=[
+    ['下一個報名期', currentMonthWindow ? '本月已有 '+currentMonthWindow+' 報名窗口，請優先整理名單與資料。' : (nearest.diff===null ? '目前查無下一個報名窗口，請人工確認最新檢定公告。' : '距離下一個報名期還有 '+nearest.diff+' 天（'+nearest.title+'）。')],
+    ['本月季節判斷', seasonLabel],
+    ['節令／學期提醒', holidayHint]
+  ];
+  el.innerHTML=reminderItems.map(([title,desc])=>'<div class="todo-item"><h4>'+title+'</h4><p>'+desc+'</p></div>').join('');
+}
+
+function setText(id,v){ document.getElementById(id).textContent=v; }
+
+function getFrontList(){
+  if(currentUser.role === 'manager') return transactions;
+  if(FULL_VIEW_OPERATORS.includes(currentUser.name)) return transactions;
+  if(SELF_VIEW_OPERATORS.includes(currentUser.name)) return transactions.filter(tx => {
+    if(tx.operator === currentUser.name) return true;
+    if(tx.type==='income'){
+      const sharedCats = SHARED_VISIBLE_INCOME[tx.businessType];
+      if(sharedCats && sharedCats.includes(tx.category)) return true;
+    }
+    return false;
+  });
+  const sharedExpenseCategories = ['快遞費','雜支','飲水機','維修','保養'];
+  return transactions.filter(tx => {
+    if(tx.affectDrawer) return true;
+    if(tx.type==='transfer' && tx.category==='櫃檯轉入店長保管箱') return true;
+    if(tx.type==='expense' && sharedExpenseCategories.includes(tx.category)) return true;
+    if(tx.method === 'transfer' || tx.method === 'online') {
+      const bizCats = CATEGORIES[tx.businessType] || {};
+      const typeCats = bizCats[tx.type] || [];
+      const catDef = typeCats.find(c => c.name === tx.category);
+      if(!catDef || !catDef.managerOnly) return true;
+      return false;
+    }
+    return false;
+  });
+}
+
+function keywordMatch(tx,kw){
+  if(!kw) return true;
+  const k=kw.toLowerCase();
+  return [tx.operator,tx.businessType,tx.category,tx.person,tx.item,tx.note,tx.paymentDetail,tx.method,tx.type].join(' ').toLowerCase().includes(k);
+}
+
+function filterList(list, prefix){
+  const kw=document.getElementById(prefix+'Keyword').value.trim();
+  const start=document.getElementById(prefix+'Start').value;
+  const end=document.getElementById(prefix+'End').value;
+  const type=document.getElementById(prefix+'TypeFilter').value;
+  const op=document.getElementById(prefix+'OperatorFilter').value;
+  const cat=document.getElementById(prefix+'CategoryFilter').value;
+  return list.filter(tx=>{
+    if(start&&tx.date<start) return false;
+    if(end&&tx.date>end) return false;
+    if(type&&tx.type!==type) return false;
+    if(op&&tx.operator!==op) return false;
+    if(cat&&tx.category!==cat) return false;
+    if(!keywordMatch(tx,kw)) return false;
+    return true;
+  });
+}
+
+function renderFrontTable(){
+  const list=filterList(getFrontList(),'front').slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')) || String(b.createdAt||'').localeCompare(String(a.createdAt||'')) || String(b.id||'').localeCompare(String(a.id||'')));
+  const body=document.getElementById('frontTableBody');
+  document.getElementById('frontEmpty').style.display=list.length?'none':'block';
+  body.innerHTML=list.map(tx=>rowHTML(tx,false)).join('');
+}
+
+
+
+function bindReportActionButtons(){
+  const body=document.getElementById('reportTableBody');
+  if(!body || body.dataset.actionBound==='1') return;
+  body.addEventListener('click', function(e){
+    const editBtn = e.target.closest('[data-edit-id]');
+    if(editBtn){
+      e.preventDefault();
+      e.stopPropagation();
+      editTransaction(editBtn.getAttribute('data-edit-id'));
+      return;
+    }
+    const delBtn = e.target.closest('[data-delete-id]');
+    if(delBtn){
+      e.preventDefault();
+      e.stopPropagation();
+      deleteTransaction(delBtn.getAttribute('data-delete-id'));
+      return;
+    }
+  });
+  body.dataset.actionBound='1';
+}
+
+function renderReportTable(){
+  if(!transactions) return;
+  const list=filterList(transactions,'report').slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')) || String(b.createdAt||'').localeCompare(String(a.createdAt||'')) || String(b.id||'').localeCompare(String(a.id||'')));
+  const body=document.getElementById('reportTableBody');
+  bindReportActionButtons();
+  document.getElementById('reportEmpty').style.display=list.length?'none':'block';
+  body.innerHTML=list.map(tx=>rowHTML(tx,true)).join('');
+  renderAnalysis(list);
+}
+
+function rowHTML(tx, actions){
+  const tmap={income:'收入',expense:'支出',transfer:'移轉'};
+  const mmap={cash:'現金',transfer:'轉帳',online:'線上付款',advance:'代墊'};
+  const fmap={ab:'AB',general:'一般',pending:'待開',receipt:'僅收據',received_invoice:'已收到發票',received_receipt:'已收到收據',unreceived_receipt:'未收到收據',none:'不開'};
+  const cls=tx.type==='income'?'income':(tx.type==='expense'?'expense':'balance');
+  const flow=tx.type==='transfer'?(tx.bankAction==='deposit_from_vault'?'保管箱→銀行':(tx.transferDirection==='drawer_to_vault'?'抽屜→保管箱':'保管箱→抽屜')):'-';
+  const invTag=tx.invoiceStatus==='general'?'tag-yes':(tx.invoiceStatus==='ab'?'tag-ab':'tag-no');
+  let html='<tr><td>'+tx.date+'</td><td>'+tx.operator+'</td><td>'+tx.businessType+'</td>';
+  html+='<td><span class="tag tag-'+(tx.type==='income'?'income':(tx.type==='expense'?'expense':'transfer'))+'">'+tmap[tx.type]+'</span></td>';
+  html+='<td>'+tx.category+'</td><td>'+esc(tx.person||'-')+'</td><td>'+esc(tx.item||'-')+'</td>';
+  html+='<td class="'+cls+'">'+money(tx.amount)+'</td>';
+  html+='<td>'+(mmap[tx.method]||tx.method)+(tx.paymentDetail?'<div class="small muted">'+esc(tx.paymentDetail)+'</div>':'')+'</td>';
+  html+='<td><span class="tag '+invTag+'">'+fmap[tx.invoiceStatus]+'</span></td>';
+  html+='<td>'+(tx.affectDrawer?'是':'否')+'</td>';
+  if(actions) html+='<td>'+flow+'</td>';
+  html+='<td>'+esc(tx.note||'-')+'</td>';
+  if(actions) html += '<td><button type="button" class="btn btn-primary" data-edit-id="'+tx.id+'" style="min-width:72px">編輯</button> <button type="button" class="btn btn-danger" data-delete-id="'+tx.id+'" style="min-width:72px">刪除</button></td>';
+  html+='</tr>';
+  return html;
+}
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function deleteTransaction(id){
+  if(currentUser.role !== 'manager') return;
+  const tx=transactions.find(x=>x.id===id);
+  if(!tx) return;
+  if(!confirm('確定刪除？')) return;
+  const before=captureBalances();
+  applyCashFlow(tx,false);
+  transactions=transactions.filter(x=>x.id!==id);
+  deleteTransactionDoc(id);
+  persistBalanceDelta(before);
+  refreshAll();
+}
+
+function editTransaction(id){
+  if(!transactions || !transactions.length) return;
+  const tx=transactions.find(t=>t.id===id);
+  if(!tx) return;
+  document.getElementById('editId').value=tx.id;
+  document.getElementById('editDate').value=tx.date;
+  fillSelect('editBusinessType', BUSINESS_TYPES);
+  fillSelect('editType', TYPE_OPTIONS.map(x=>x.label), TYPE_OPTIONS.map(x=>x.value));
+  const editMethodOptions = PAYMENT_METHODS.filter(x=>!x.managerOnly || currentUser.role==='manager');
+  fillSelect('editMethod', editMethodOptions.map(x=>x.label), editMethodOptions.map(x=>x.value));
+  document.getElementById('editBusinessType').value=tx.businessType;
+  document.getElementById('editType').value=tx.type;
+  document.getElementById('editAmount').value=tx.amount;
+  document.getElementById('editMethod').value=tx.method;
+  document.getElementById('editAffectDrawer').checked=tx.affectDrawer;
+  document.getElementById('editPerson').value=tx.person||'';
+  document.getElementById('editItem').value=tx.item||'';
+  document.getElementById('editNote').value=tx.note||'';
+  handleEditTypeChange();
+  document.getElementById('editCategory').value=tx.category;
+  renderInvoiceSelect('editInvoiceStatus','editInvoiceFieldLabel','editInvoiceStatusDisplay',{businessType:tx.businessType,type:tx.type,category:tx.category,invoiceStatus:tx.invoiceStatus});
+  syncEditInvoiceFieldDisplay();
+  document.getElementById('editModal').classList.add('active');
+}
+
+function handleEditTypeChange(){
+  const type=document.getElementById('editType').value;
+  const biz=document.getElementById('editBusinessType').value;
+  const cat=document.getElementById('editCategory');
+  let list=[];
+  if(type==='transfer'){
+    list=TRANSFER_CATEGORIES;
+  } else {
+    const bizCats = CATEGORIES[biz] || {};
+    const typeCats = bizCats[type] || [];
+    const isManager = currentUser.role === 'manager';
+    list = typeCats.filter(c => !c.managerOnly || isManager).map(c => c.name);
+  }
+  const previous = cat.value;
+  cat.innerHTML=list.map(it=>'<option value="'+it+'">'+it+'</option>').join('');
+  if(list.includes(previous)) cat.value = previous;
+  const editInvoiceBlock = document.getElementById('editInvoiceBlock');
+  if(editInvoiceBlock) editInvoiceBlock.style.display = type==='transfer'?'none':'block';
+  renderInvoiceSelect('editInvoiceStatus','editInvoiceFieldLabel','editInvoiceStatusDisplay',{
+    businessType:biz,
+    type:type,
+    category:cat.value,
+    invoiceStatus:document.getElementById('editInvoiceStatus').value
+  });
+}
+
+
+function saveEdit(e){
+  e.preventDefault();
+  const id=document.getElementById('editId').value;
+  const old=transactions.find(t=>t.id===id);
+  if(!old) return false;
+  const before=captureBalances();
+  applyCashFlow(old,false);
+  old.date=document.getElementById('editDate').value;
+  old.businessType=document.getElementById('editBusinessType').value;
+  old.type=document.getElementById('editType').value;
+  old.category=document.getElementById('editCategory').value;
+  const editQty=Number(document.getElementById('editQuantity')?.value||0);
+  const editUnit=Number(document.getElementById('editUnitPrice')?.value||0);
+  const editAmount=Number(document.getElementById('editAmount').value||0);
+  old.quantity=editQty || '';
+  old.unitPrice=editUnit || '';
+  old.amount=editQty>0 && editUnit>0 ? editQty*editUnit : editAmount;
+  old.method=document.getElementById('editMethod').value;
+  old.affectDrawer=document.getElementById('editAffectDrawer').checked;
+  old.person=document.getElementById('editPerson').value.trim();
+  old.item=document.getElementById('editItem').value.trim();
+  old.invoiceStatus=document.getElementById('editInvoiceStatus').value;
+  old.note=document.getElementById('editNote').value.trim();
+  if(old.method==='cash' && !old.affectDrawer){
+    const proceed = confirm('付款方式是現金，但沒有勾選現金抽屜。是否仍要繼續？');
+    if(!proceed){ applyCashFlow(old,true); return false; }
+  }
+  applyCashFlow(old,true);
+  saveTransaction(old);
+  persistBalanceDelta(before);
+  refreshAll();
+  closeModal('editModal');
+  return false;
+}
+
+
+
+
+
+const CATEGORY_DISPLAY_LABELS = { '租借教室':'租借教室（租用收入）' };
+const KEY_INCOME_CATEGORIES = ['學費','租借教室','樂器販售','課本教材販售','標案收入'];
+function catLabel(name){ return CATEGORY_DISPLAY_LABELS[name] || name; }
+
+function renderCategorySumList(map, elId){
+  const entries=Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  const el=document.getElementById(elId);
+  if(!el) return;
+  if(!entries.length){ el.innerHTML='<div class="empty">該月份無資料</div>'; return; }
+  const total=entries.reduce((s,[,v])=>s+v,0);
+  el.innerHTML = entries.map(([n,v])=>'<div class="analysis-item"><span>'+catLabel(n)+'</span><strong>'+money(v)+'</strong></div>').join('')
+    + '<div class="analysis-item" style="border-top:2px solid var(--border);font-weight:800"><span>合計</span><strong>'+money(total)+'</strong></div>';
+}
+
+function renderBarChart(map, elId, colorVar){
+  const el=document.getElementById(elId);
+  if(!el) return;
+  const entries=Object.entries(map);
+  if(!entries.length){ el.innerHTML='<div class="empty">無資料</div>'; return; }
+  const max=Math.max(1, ...entries.map(([,v])=>v));
+  el.innerHTML = entries.map(([k,v])=>{
+    const pct=Math.round(v/max*100);
+    return '<div style="margin-bottom:10px">'
+      +'<div style="display:flex;justify-content:space-between;font-size:.86rem;margin-bottom:4px"><span>'+k+'</span><strong>'+money(v)+'</strong></div>'
+      +'<div style="background:#eef2f7;border-radius:999px;height:10px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+colorVar+'"></div></div>'
+      +'</div>';
+  }).join('');
+}
+
+function initAnalysisMonthPicker(){
+  const el=document.getElementById('analysisMonthPicker');
+  if(!el) return;
+  const monthsSet=new Set(transactions.map(x=>(x.date||'').slice(0,7)).filter(Boolean));
+  monthsSet.add(monthStr());
+  const months=[...monthsSet].sort().reverse();
+  const previous=el.value;
+  el.innerHTML=months.map(m=>'<option value="'+m+'">'+m+'</option>').join('');
+  el.value = months.includes(previous) ? previous : monthStr();
+}
+
+function renderMonthlyAnalysis(list){
+  initAnalysisMonthPicker();
+  const monthPicker=document.getElementById('analysisMonthPicker');
+  const selectedMonth=(monthPicker && monthPicker.value) ? monthPicker.value : monthStr();
+  const baseList=list||transactions;
+  const monthList=baseList.filter(x=>(x.date||'').slice(0,7)===selectedMonth);
+  const prevDate=new Date(selectedMonth+'-01');
+  prevDate.setMonth(prevDate.getMonth()-1);
+  const prevMonthKey=prevDate.toISOString().slice(0,7);
+  const prevList=baseList.filter(x=>(x.date||'').slice(0,7)===prevMonthKey);
+  const inc=monthList.filter(x=>x.type==='income').reduce((s,x)=>s+Number(x.amount||0),0);
+  const exp=monthList.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount||0),0);
+  const net=inc-exp;
+  const prevInc=prevList.filter(x=>x.type==='income').reduce((s,x)=>s+Number(x.amount||0),0);
+  const prevExp=prevList.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount||0),0);
+  const prevNet=prevInc-prevExp;
+  const typeIncome={}, typeExpense={};
+  BUSINESS_TYPES.forEach(b=>{ typeIncome[b]=0; typeExpense[b]=0; });
+  monthList.forEach(x=>{
+    if(x.type==='income') typeIncome[x.businessType]=(typeIncome[x.businessType]||0)+Number(x.amount||0);
+    if(x.type==='expense') typeExpense[x.businessType]=(typeExpense[x.businessType]||0)+Number(x.amount||0);
+  });
+  const incCats=monthList.filter(x=>x.type==='income').reduce((acc,x)=>{ acc[x.category]=(acc[x.category]||0)+Number(x.amount||0); return acc; },{});
+  const expCats=monthList.filter(x=>x.type==='expense').reduce((acc,x)=>{ acc[x.category]=(acc[x.category]||0)+Number(x.amount||0); return acc; },{});
+  const allCats={...incCats};
+  Object.keys(expCats).forEach(k=>allCats[k]=(allCats[k]||0)+expCats[k]);
+  const prevCatMap=prevList.reduce((acc,x)=>{ const k=x.category||'未分類'; acc[k]=(acc[k]||0)+Number(x.amount||0); return acc; },{});
+  const diffMap={};
+  Object.keys({...allCats,...prevCatMap}).forEach(k=>{ diffMap[k]=(allCats[k]||0)-(prevCatMap[k]||0); });
+  const biggestDiff=Object.entries(diffMap).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]))[0] || ['無',0];
+  const incomeCount=monthList.filter(x=>x.type==='income').length;
+  const expenseCount=monthList.filter(x=>x.type==='expense').length;
+  const cateShare=Object.entries(allCats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>'<div class="analysis-item"><span>'+catLabel(k)+'</span><strong>'+money(v)+' ('+Math.round(v/Math.max(inc+exp,1)*100)+'%)</strong></div>').join('') || '<div class="empty">無資料</div>';
+  document.getElementById('monthlyLedgerSummary').innerHTML=[
+    ['月份', selectedMonth],
+    ['本月總收入', money(inc)],
+    ['本月總支出', money(exp)],
+    ['淨額', money(net)],
+    ['上月淨額', money(prevNet)],
+    ['淨額差異', money(net-prevNet)],
+    ['收入筆數', incomeCount.toLocaleString()],
+    ['支出筆數', expenseCount.toLocaleString()],
+    ['與上月差異最大項目', catLabel(biggestDiff[0])+'：'+money(biggestDiff[1])]
+  ].map(i=>'<div class="analysis-item"><span>'+i[0]+'</span><strong>'+i[1]+'</strong></div>').join('');
+  renderBarChart(typeIncome, 'bizIncomeChart', 'var(--success)');
+  renderBarChart(typeExpense, 'bizExpenseChart', 'var(--danger)');
+  renderCategorySumList(incCats, 'monthlyIncomeByCategory');
+  renderCategorySumList(expCats, 'monthlyExpenseByCategory');
+  const shareBox=document.getElementById('monthlyCategoryShare');
+  if(shareBox) shareBox.innerHTML=cateShare;
+  const diffBox=document.getElementById('monthlyTopDiff');
+  if(diffBox) diffBox.innerHTML='<div class="analysis-item"><span>'+catLabel(biggestDiff[0])+'</span><strong>'+money(biggestDiff[1])+'</strong></div>';
+}
+
+function renderMissingItems(list){
+  const base=list||transactions;
+  const pendingInvoice=base.filter(x=>x.type==='income' && x.invoiceStatus==='pending').length;
+  const pendingReceipt=base.filter(x=>x.type==='expense' && (x.invoiceStatus==='pending' || x.invoiceStatus==='receipt_pending')).length;
+  const pendingIssue=base.filter(x=>x.type==='income' && x.invoiceStatus==='to_issue').length;
+  const el=document.getElementById('analysisSummary');
+  if(el){
+    el.innerHTML=[
+      ['缺件總數', (pendingInvoice+pendingReceipt+pendingIssue).toLocaleString()],
+      ['未收到發票', pendingInvoice.toLocaleString()],
+      ['未收到收據', pendingReceipt.toLocaleString()],
+      ['待開', pendingIssue.toLocaleString()]
+    ].map(i=>'<div class="analysis-item"><span>'+i[0]+'</span><strong>'+i[1]+'</strong></div>').join('');
+  }
+  const box=document.getElementById('missingItemsList');
+  if(box){
+    const rows=base.filter(x=>(x.type==='income' && x.invoiceStatus==='pending') || (x.type==='expense' && (x.invoiceStatus==='pending' || x.invoiceStatus==='receipt_pending')) || (x.type==='income' && x.invoiceStatus==='to_issue')).slice(0,30);
+    box.innerHTML=rows.length ? '<div class="analysis-list">'+rows.map(tx=>missingItemRowHTML(tx)).join('')+'</div>' : '<div class="empty">目前沒有缺件</div>';
+  }
+}
+
+function missingItemLabel(tx){
+  if(tx.type==='income' && tx.invoiceStatus==='pending') return '未開發票';
+  if(tx.type==='income' && tx.invoiceStatus==='to_issue') return '待開發票';
+  if(tx.type==='expense' && tx.invoiceStatus==='pending') return '未收到發票';
+  if(tx.type==='expense' && tx.invoiceStatus==='receipt_pending') return '未收到收據';
+  return '缺件';
+}
+
+function missingItemRowHTML(tx){
+  const cls=tx.type==='income'?'income':'expense';
+  return '<div class="analysis-item" style="flex-direction:column;align-items:stretch;gap:6px">'
+    + '<div style="display:flex;justify-content:space-between;gap:10px"><strong>'+tx.date+' · '+esc(tx.businessType)+' / '+esc(tx.category)+'</strong><span class="'+cls+'">'+money(tx.amount)+'</span></div>'
+    + '<div class="muted">對象：'+esc(tx.person||'-')+'　項目：'+esc(tx.item||'-')+'　操作人：'+esc(tx.operator||'-')+'</div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center"><span class="tag tag-no">'+missingItemLabel(tx)+'</span><button type="button" class="btn btn-muted" style="padding:4px 10px;font-size:.8rem" onclick="editTransaction(\''+tx.id+'\')">編輯</button></div>'
+    + '</div>';
+}
+
+function renderInvoiceAnalysis(list){
+  const el=document.getElementById('invoiceAnalysis');
+  if(!el) return;
+  const base=list||transactions;
+  const tuitionList=base.filter(x=>x.businessType==='歆動補習班' && x.type==='income' && x.category==='學費');
+  const monthMap={};
+  tuitionList.forEach(x=>{
+    const m=(x.date||'').slice(0,7);
+    if(!m) return;
+    monthMap[m]=monthMap[m]||{students:new Set(), tuition:0};
+    if(x.person) monthMap[m].students.add(x.person);
+    monthMap[m].tuition+=Number(x.amount||0);
+  });
+  const months=Object.keys(monthMap).sort();
+  const currentMonth=monthStr();
+  const currentMonthData=monthMap[currentMonth] || {students:new Set(), tuition:0};
+  const avgStudents=months.length ? (months.reduce((s,m)=>s+monthMap[m].students.size,0)/months.length) : 0;
+  const monthAvgTuition=currentMonthData.students.size ? Math.round(currentMonthData.tuition/currentMonthData.students.size) : 0;
+  const avgTuition=months.length ? (months.reduce((s,m)=>s+(monthMap[m].students.size ? monthMap[m].tuition/monthMap[m].students.size : 0),0)/months.length) : 0;
+  const month=new Date().getMonth()+1;
+  const seasonProfile=(function(){
+    if(month===7||month===8) return {label:'旺季模式', studentsFactor:1.12, focus:'建議優先追蹤滿班率、排班容量與學費回收速度。'};
+    if(month===1||month===2) return {label:'淡季／假期模式', studentsFactor:0.9, focus:'建議把缺課、補課與延後繳費列為主要觀察重點。'};
+    if(month===3||month===9) return {label:'開學季模式', studentsFactor:1.05, focus:'建議同步觀察續班、新生轉換與班表重排壓力。'};
+    return {label:'一般月份模式', studentsFactor:1, focus:'維持一般追蹤節奏，提前準備下一波招生與檢定。'};
+  })();
+  const adjustedStudents=Math.round(currentMonthData.students.size*seasonProfile.studentsFactor);
+  const studentDelta=((seasonProfile.studentsFactor-1)*100).toFixed(0);
+  el.innerHTML=[
+    ['單月學生數', currentMonthData.students.size.toLocaleString()],
+    ['年平均學生數', avgStudents.toFixed(1)],
+    ['單月平均學費', money(monthAvgTuition)],
+    ['年平均學費', money(Math.round(avgTuition))],
+    ['季節調整學生數', adjustedStudents.toLocaleString()+'（'+(studentDelta.startsWith('-')?studentDelta:'+'+studentDelta)+'%）'],
+    ['本月模式', seasonProfile.label],
+    ['管理重點', seasonProfile.focus]
+  ].map(i=>'<div class="analysis-item"><span>'+i[0]+'</span><strong>'+i[1]+'</strong></div>').join('');
+}
+
+function renderAnalysis(list){
+  renderMonthlyAnalysis(list);
+  renderMissingItems(list);
+  renderInvoiceAnalysis(list);
+  renderBusinessAnalysis();
+}
+
+function renderBusinessAnalysis(){
+  const today=new Date();
+  const currentYear=today.getFullYear();
+  const todayStart=new Date(currentYear,today.getMonth(),today.getDate());
+  const currentMonthNum=today.getMonth()+1;
+  const signupWindows=[
+    {title:'IPPEC 演奏檢定', meta:'每年一次', signup:'報名：4/15～4/30', exam:'考試：約 7～8 月', note:'提醒有意報考學生提早確認曲目與報名資料。', windows:[{month:4, day:15}]},
+    {title:'IPPEC 樂理檢定', meta:'每年兩次', signup:'第一次報名：12/15～12/30；第二次報名：9/1～9/15', exam:'考試：通常 3 月與 11 月', note:'適合提早安排樂理班與檢定前總複習。', windows:[{month:12, day:15},{month:9, day:1}]},
+    {title:'RSL Awards A 梯次', meta:'上半年度', signup:'報名：3/1～3/31', exam:'考試：5月下旬～6月上旬', note:'通常安排在教育會考後，需提前整併報名名單。', windows:[{month:3, day:1}]},
+    {title:'RSL Awards B 梯次', meta:'下半年度', signup:'報名：9/1～9/30', exam:'考試：11月下旬～12月上旬', note:'開學季後要立即接續提醒，避免錯過秋季報名窗口。', windows:[{month:9, day:1}]}
+  ];
+  let highlightedIndex=-1;
+  let nearestIndex=0;
+  let nearestDiff=Infinity;
+  signupWindows.forEach((item,index)=>{
+    const hasCurrentMonthWindow=item.windows.some(w=>w.month===currentMonthNum);
+    if(highlightedIndex===-1 && hasCurrentMonthWindow) highlightedIndex=index;
+    item.windows.forEach(w=>{
+      [currentYear,currentYear+1].forEach(y=>{
+        const d=new Date(y,w.month-1,w.day);
+        const diff=Math.ceil((d-todayStart)/(1000*60*60*24));
+        if(diff>=0 && diff<nearestDiff){ nearestDiff=diff; nearestIndex=index; }
+      });
+    });
+  });
+  const usingCurrentMonthWindow=highlightedIndex!==-1;
+  if(!usingCurrentMonthWindow) highlightedIndex=nearestIndex;
+  const timelineCards=signupWindows.map((item,index)=>'<div class="timeline-item '+(index===highlightedIndex?'is-next':'')+'"><h4>'+item.title+'</h4><div class="timeline-meta">'+item.meta+'</div><div>'+item.signup+'</div><div>'+item.exam+'</div><div class="timeline-meta" style="margin-top:8px">'+item.note+'</div></div>').join('');
+  const daysToNextWindow=nearestDiff===Infinity ? null : nearestDiff;
+  const nextWindowMessage=usingCurrentMonthWindow ? '本月已有報名窗口，已優先在上方高亮顯示。' : (daysToNextWindow===null ? '本年度報名期大多已結束，請先整理下一年度名單。' : '本月沒有報名窗口，已改顯示下一期預告，距離下一個重要報名期約 '+daysToNextWindow+' 天。');
+  const todo=[
+    ['下一個報名期', nextWindowMessage],
+    ['本月季節判斷', '目前為一般月份，請持續追蹤課表與收費節奏。'],
+    ['店長待辦', '請同步檢查檢定報名、寒暑假時間、開學季課表、春節停課與缺件補追進度。']
+  ].map(([title,desc])=>'<div class="todo-item"><h4>'+title+'</h4><p>'+desc+'</p></div>').join('');
+  document.getElementById('businessAnalysis').innerHTML='<div class="manager-board"><div class="season-state"><span class="dot"></span><span>報名時程</span></div><div class="timeline-board">'+timelineCards+'</div><div class="todo-board">'+todo+'</div></div>';
+}
+
+function switchTab(tabId){
+  // Enforce manager-only tabs
+  if(currentUser.role!=='manager' && (tabId==='reportTab'||tabId==='longTermTab'||tabId==='adminTab')){
+    alert('僅店長可進入此頁面'); return;
+  }
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tabId));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id===tabId));
+  if(tabId==='reportTab'){ document.getElementById('reportContent').style.display='block'; renderReportTable(); }
+  if(tabId==='invoiceTab') renderInvoiceTab();
+  if(tabId==='longTermTab') renderLongTermTab();
+  if(tabId==='adminTab'){ renderReportTable(); renderFixedItemsReminder(); }
+}
+
+function refreshAll(){
+  updateStats();
+  renderFrontTable();
+  if(currentUser && currentUser.role==='manager'){ renderReportTable(); renderFixedItemsReminder(); }
+}
+
+function renderFixedItemsReminder(){
+  const el=document.getElementById('fixedItemsReminderList');
+  if(!el) return;
+  const currentMonthKey=monthStr();
+  el.innerHTML = recurringItems.length ? recurringItems.map(item=>{
+    const matched=transactions.filter(tx=>tx.type===item.type && tx.category===item.category && (tx.date||'').slice(0,7)===currentMonthKey);
+    const total=matched.reduce((s,x)=>s+Number(x.amount||0),0);
+    const done=matched.length>0;
+    const typeLabel=item.type==='income'?'收入':'支出';
+    const status=done ? '<span style="color:var(--success);font-weight:800">已記錄 '+money(total)+'</span>' : '<span style="color:var(--danger);font-weight:800">尚未記錄</span>';
+    return '<div class="analysis-item"><span>'+(done?'✅':'⚠️')+' '+item.name+'（'+typeLabel+'／'+item.category+'）　'+status+'</span><button class="btn btn-muted" style="padding:4px 10px" onclick="deleteFixedItem(\''+item.id+'\')">刪除</button></div>';
+  }).join('') : '<div class="empty">尚未設定追蹤項目</div>';
+}
+
+function addFixedItem(){
+  if(currentUser.role!=='manager'){ alert('僅店長可設定'); return; }
+  const name=document.getElementById('fixedItemName').value.trim();
+  const type=document.getElementById('fixedItemType').value;
+  const category=document.getElementById('fixedItemCategory').value.trim();
+  if(!name || !category){ alert('請輸入項目名稱與對應類別'); return; }
+  recurringItems.push({id:'r_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6), name, type, category});
+  saveRecurringItemsToFirestore();
+  document.getElementById('fixedItemName').value='';
+  document.getElementById('fixedItemCategory').value='';
+  renderFixedItemsReminder();
+}
+
+function deleteFixedItem(id){
+  if(currentUser.role!=='manager'){ alert('僅店長可設定'); return; }
+  if(!confirm('確定要刪除這個追蹤項目？')) return;
+  recurringItems=recurringItems.filter(x=>x.id!==id);
+  saveRecurringItemsToFirestore();
+  renderFixedItemsReminder();
+}
+
+function saveRecurringItemsToFirestore(){
+  if(!window.firebaseDb) return;
+  window.firestoreSetDoc(window.firestoreDoc(window.firebaseDb, 'settings', 'recurringItems'), {items:recurringItems});
+}
+
+function clearFrontFilters(){
+  document.getElementById('frontKeyword').value='';
+  document.getElementById('frontStart').value='';
+  document.getElementById('frontEnd').value='';
+  document.getElementById('frontTypeFilter').value='';
+  document.getElementById('frontOperatorFilter').value='';
+  renderFrontTable();
+}
+
+function clearReportFilters(){
+  document.getElementById('reportKeyword').value='';
+  document.getElementById('reportStart').value='';
+  document.getElementById('reportEnd').value='';
+  document.getElementById('reportTypeFilter').value='';
+  document.getElementById('reportOperatorFilter').value='';
+  renderReportTable();
+}
+
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+
+function getExportCategoryOptions(){
+  const biz=document.getElementById('exportBusiness')?.value || '';
+  const type=document.getElementById('exportType')?.value || '';
+  let list=[];
+  if(type==='transfer'){
+    list=TRANSFER_CATEGORIES.slice();
+  } else if(biz && type){
+    const bizCats=CATEGORIES[biz] || {};
+    const typeCats=bizCats[type] || [];
+    const isManager=currentUser.role === 'manager';
+    list=typeCats.filter(c => !c.managerOnly || isManager).map(c => c.name);
+  } else if(biz){
+    const bizCats=CATEGORIES[biz] || {};
+    const isManager=currentUser.role === 'manager';
+    list=['income','expense'].flatMap(key => (bizCats[key] || []).filter(c => !c.managerOnly || isManager).map(c => c.name));
+  } else if(type==='income' || type==='expense'){
+    const isManager=currentUser.role === 'manager';
+    list=Object.values(CATEGORIES).flatMap(bizCats => (bizCats[type] || []).filter(c => !c.managerOnly || isManager).map(c => c.name));
+  } else {
+    const isManager=currentUser.role === 'manager';
+    list=Object.values(CATEGORIES).flatMap(bizCats => ['income','expense'].flatMap(key => (bizCats[key] || []).filter(c => !c.managerOnly || isManager).map(c => c.name))).concat(TRANSFER_CATEGORIES);
+  }
+  return ['全部'].concat([...new Set(list)]);
+}
+
+function syncExportCategoryOptions(){
+  const sel=document.getElementById('exportCategory');
+  if(!sel) return;
+  const previous=sel.value;
+  const options=getExportCategoryOptions();
+  fillSelect('exportCategory', options, options.map((o,i)=>i===0?'':o));
+  if(options.includes(previous)) sel.value=previous;
+}
+
+function showExportPanel(){
+  document.getElementById('exportModal').classList.add('active');
+  document.getElementById('exportPasswordWrap').style.display='block';
+  document.getElementById('exportOptions').style.display='none';
+  document.getElementById('exportPassword').value='';
+  document.getElementById('exportStartDate').value='';
+  document.getElementById('exportEndDate').value='';
+  document.getElementById('exportKeyword').value='';
+  document.getElementById('exportType').value='';
+  const bizOptions=['全部'].concat(BUSINESS_TYPES);
+  fillSelect('exportBusiness', bizOptions, bizOptions.map((o,i)=>i===0?'':o));
+  syncExportCategoryOptions();
+}
+
+function verifyExportPassword(){
+  const pw=document.getElementById('exportPassword').value;
+  if(pw!=='5588'){ alert('僅店長可匯出'); return; }
+  document.getElementById('exportPasswordWrap').style.display='none';
+  document.getElementById('exportOptions').style.display='block';
+}
+
+function doExportCSV(){
+  const scope=document.getElementById('exportScope').value;
+  const biz=document.getElementById('exportBusiness').value;
+  const type=document.getElementById('exportType').value;
+  const cat=document.getElementById('exportCategory').value;
+  const startDate=document.getElementById('exportStartDate').value;
+  const endDate=document.getElementById('exportEndDate').value;
+  const keyword=document.getElementById('exportKeyword').value.trim().toLowerCase();
+  let list = scope==='all' ? transactions : getFrontList();
+  if(startDate) list=list.filter(x=>String(x.date||'') >= startDate);
+  if(endDate) list=list.filter(x=>String(x.date||'') <= endDate);
+  if(biz) list=list.filter(x=>x.businessType===biz);
+  if(type) list=list.filter(x=>x.type===type);
+  if(cat) list=list.filter(x=>x.category===cat);
+  if(keyword){
+    list=list.filter(x=>[
+      x.operator,
+      x.businessType,
+      x.category,
+      x.person,
+      x.item,
+      x.note,
+      x.paymentDetail,
+      x.date
+    ].some(v=>String(v||'').toLowerCase().includes(keyword)));
+  }
+  list=list.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')) || String(b.createdAt||'').localeCompare(String(a.createdAt||'')) || String(b.id||'').localeCompare(String(a.id||'')));
+  if(!list.length){ alert('沒有符合條件的資料'); return; }
+  const headers=['日期','操作人','大分類','交易類型','類別','對象','項目','金額','付款方式','付款資訊','發票','現金抽屜','備註'];
+  const tmap={income:'收入',expense:'支出',transfer:'移轉'};
+  const mmap={cash:'現金',transfer:'轉帳',online:'線上付款',advance:'代墊'};
+  const fmap={ab:'AB',general:'一般',pending:'待開',receipt:'僅收據',received_invoice:'已收到發票',received_receipt:'已收到收據',unreceived_receipt:'未收到收據',none:'不開'};
+  let csv='\ufeff'+headers.join(',')+'\n';
+  list.forEach(tx=>{
+    const row=[tx.date,tx.operator,tx.businessType,tmap[tx.type]||tx.type,tx.category,tx.person||'',tx.item||'',tx.amount,mmap[tx.method]||tx.method,tx.paymentDetail||'',fmap[tx.invoiceStatus]||tx.invoiceStatus,tx.affectDrawer?'是':'否',tx.note||''];
+    csv+=row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')+'\n';
+  });
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const link=document.createElement('a');
+  link.href=URL.createObjectURL(blob);
+  link.download='歆動記帳_'+todayStr()+'.csv';
+  link.click();
+  closeModal('exportModal');
+}
+
+function triggerRestoreImport(){
+  if(currentUser.role !== 'manager'){ alert('僅店長可匯入 JSON'); return; }
+  const input=document.getElementById('restoreJsonInput');
+  if(input) input.click();
+}
+
+function backupData(){
+  const payload={transactions, settings, invoiceTargets, students, settingsAudit, exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const link=document.createElement('a');
+  link.href=URL.createObjectURL(blob);
+  link.download='歆動記帳備份_'+todayStr()+'.json';
+  link.click();
+}
+
+function restoreData(input){
+  const file=input.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=async function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      if(data.transactions){ transactions=data.transactions; await replaceAllTransactions(transactions); }
+      if(data.settings){ settings=data.settings; saveSettingsToFirestore(); }
+      if(data.invoiceTargets) invoiceTargets=data.invoiceTargets;
+      if(data.students) students=data.students;
+      if(data.settingsAudit) settingsAudit=data.settingsAudit;
+      refreshAll();
+      alert('還原成功');
+    }catch(err){ alert('無法讀取'); }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+function clearAllData(){
+  if(currentUser.role !== 'manager'){ alert('僅店長可清空全部資料'); return; }
+  if(!confirm('⚠️ 確定要清空所有資料？\n\n這將刪除所有交易紀錄、學生資料、發票目標和設定紀錄。\n此操作無法復原！\n\n建議先按「備份JSON」保存資料。')) return;
+  if(!confirm('再次確認：你真的要清空所有資料嗎？')) return;
+  transactions=[];
+  students=[];
+  invoiceTargets={};
+  settingsAudit=[];
+  settings={drawerLimit:5000, drawerBalance:0, managerVaultBalance:0};
+  replaceAllTransactions([]);
+  saveSettingsToFirestore();
+  refreshAll();
+  alert('已清空所有資料');
+}
+
+
+function canEditInvoiceTargets(){
+  return true;
+}
+
+function saveInvoiceTargets(){
+  if(!canEditInvoiceTargets()){ alert('w-ting 可查看，但不能修改學費收據預設值'); return; }
+  const month=document.getElementById('invoiceTargetMonth').value;
+  if(!month){ alert('請選擇月份'); return; }
+  const gen=Number(document.getElementById('targetGeneral').value||0);
+  const ab=Number(document.getElementById('targetAb').value||0);
+  invoiceTargets[month]={general:gen, ab:ab};
+  if(window.firebaseDb) window.firestoreSetDoc(window.firestoreDoc(window.firebaseDb, 'settings', 'invoiceTargets'), invoiceTargets);
+  alert('預設值已儲存');
+  renderSavedTargets();
+  renderInvoiceTab();
+}
+
+function clearInvoiceTargets(){
+  if(!canEditInvoiceTargets()){ alert('w-ting 可查看，但不能修改學費收據預設值'); return; }
+  document.getElementById('invoiceTargetMonth').value='';
+  document.getElementById('targetGeneral').value='';
+  document.getElementById('targetAb').value='';
+}
+
+function renderSavedTargets(){
+  const el=document.getElementById('savedTargetsList');
+  const months=Object.keys(invoiceTargets).sort().reverse();
+  if(!months.length){ el.innerHTML=''; return; }
+  const editable = canEditInvoiceTargets();
+  el.innerHTML='<div style="font-size:.9rem;color:var(--muted);margin-bottom:8px">已儲存預設值'+(editable?'：':'（僅可查看）：')+'</div>'+months.map(m=>{
+    const t=invoiceTargets[m];
+    return '<div class="pill" style="margin:4px 4px 0 0">'+m+' 一般:'+money(t.general)+' AB:'+money(t.ab)+(editable?' <button class="btn btn-muted" style="padding:2px 8px;font-size:.8rem" onclick="editTarget(\''+m+'\')">修改</button>':'')+'</div>';
+  }).join('');
+}
+
+function editTarget(month){
+  if(!canEditInvoiceTargets()){ return; }
+  document.getElementById('invoiceTargetMonth').value=month;
+  loadInvoiceTargets();
+}
+
+function loadInvoiceTargets(){
+  const month=document.getElementById('invoiceTargetMonth').value;
+  if(!month||!invoiceTargets[month]){ document.getElementById('targetGeneral').value=''; document.getElementById('targetAb').value=''; return; }
+  document.getElementById('targetGeneral').value=invoiceTargets[month].general||0;
+  document.getElementById('targetAb').value=invoiceTargets[month].ab||0;
+}
+
+function initInvoiceMonthSelect(){
+  const el=document.getElementById('invoiceTargetMonth');
+  let html='<option value="">請選擇月份</option>';
+  for(let i=0;i<12;i++){
+    const d=new Date(); d.setMonth(d.getMonth()-i);
+    const v=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    html+='<option value="'+v+'">'+v+'</option>';
+  }
+  el.innerHTML=html;
+}
+
+function renderInvoiceTab(){
+  initInvoiceMonthSelect();
+  renderSavedTargets();
+  const canEdit = canEditInvoiceTargets();
+  ['invoiceTargetMonth','targetGeneral','targetAb'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled = !canEdit; });
+  document.querySelectorAll('#invoiceTab button').forEach(btn=>{ if(btn.textContent.includes('儲存預設值')||btn.textContent.includes('清除')) btn.disabled = !canEdit; });
+  const months=[];
+  for(let i=0;i<6;i++){
+    const d=new Date(); d.setMonth(d.getMonth()-i);
+    months.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+  }
+  const rows=months.map(m=>{
+    const target=invoiceTargets[m]||{general:0,ab:0};
+    let actGen=0, actAb=0;
+    transactions.filter(x=>x.date.startsWith(m) && isTuitionReceiptTx(x)).forEach(x=>{
+      if(x.invoiceStatus==='general') actGen+=x.amount;
+      if(x.invoiceStatus==='ab') actAb+=x.amount;
+    });
+    const gapGen=target.general-actGen, gapAb=target.ab-actAb;
+    return '<div class="analysis-item"><span>'+m+'</span><span>一般: '+money(actGen)+' / 目標: '+money(target.general)+' / 差: <span class="'+(gapGen>0?'expense':'income')+'">'+money(gapGen)+'</span><br>AB: '+money(actAb)+' / 目標: '+money(target.ab)+' / 差: <span class="'+(gapAb>0?'expense':'income')+'">'+money(gapAb)+'</span></span></div>';
+  });
+  document.getElementById('invoiceDashboard').innerHTML=rows.join('')||'<div class="empty">尚無資料</div>';
+  const reminders = transactions.filter(x => x.invoiceStatus==='pending' || x.invoiceStatus==='unreceived_receipt');
+  const reminderHtml = reminders.length ? reminders.map(x => {
+    const statusText = x.invoiceStatus==='pending' ? '未收到發票' : '未收到收據';
+    const owner = (x.operator||'') + (x.person ? ' / ' + x.person : '');
+    return '<div class="analysis-item"><span>'+statusText+' · '+(x.date||'')+' · '+(x.businessType||'')+' · '+(x.category||'')+'</span><span class="right">'+owner+'<br>'+money(x.amount)+'</span></div>';
+  }).join('') : '<div class="empty">目前沒有未收到發票或未收到收據的提醒</div>';
+  const reminderSection = '<div style="margin:12px 0 8px;font-weight:700">待追發票／收據提醒</div><div>'+reminderHtml+'</div>';
+  document.getElementById('invoiceReminders').innerHTML = reminderSection;
+  const trendMonths=[];
+  for(let i=5;i>=0;i--){ const d=new Date(); d.setMonth(d.getMonth()-i); trendMonths.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); }
+  const trendRows=trendMonths.map(m=>{
+    let ab=0, general=0;
+    transactions.filter(x=>x.date.startsWith(m) && isTuitionReceiptTx(x)).forEach(x=>{
+      if(x.invoiceStatus==='ab') ab+=x.amount;
+      if(x.invoiceStatus==='general') general+=x.amount;
+    });
+    return '<div class="analysis-item"><span>'+m+'</span><span><span class="income">一般 '+money(general)+'</span> / <span class="warning">AB '+money(ab)+'</span></span></div>';
+  });
+  document.getElementById('invoiceTrend').innerHTML=trendRows.join('');
+}
+function renderLongTermTab(){
+  const now=new Date();
+  function calcMonths(n){
+    let inc=0, exp=0;
+    const start=new Date(); start.setMonth(start.getMonth()-n+1); start.setDate(1);
+    transactions.filter(x=>{ const d=new Date(x.date); return d>=start&&(x.type==='income'||x.type==='expense'); }).forEach(x=>{
+      if(x.type==='income') inc+=x.amount; else exp+=x.amount;
+    });
+    return {inc,exp};
+  }
+  const r3=calcMonths(3), r6=calcMonths(6), r12=calcMonths(12);
+  setText('ltIncome3', money(r3.inc)); setText('ltExpense3', money(r3.exp));
+  setText('ltIncome6', money(r6.inc)); setText('ltExpense6', money(r6.exp));
+  setText('ltIncome12', money(r12.inc)); setText('ltExpense12', money(r12.exp));
+  const monthly={};
+  transactions.forEach(x=>{
+    const m=x.date.slice(0,7);
+    if(!monthly[m]) monthly[m]={inc:0,exp:0,count:0};
+    if(x.type==='income') monthly[m].inc+=x.amount;
+    if(x.type==='expense') monthly[m].exp+=x.amount;
+    if(x.type==='income'||x.type==='expense') monthly[m].count++;
+  });
+  const sorted=Object.entries(monthly).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,12);
+  document.getElementById('monthlyTable').innerHTML=sorted.map(([m,v])=>'<tr><td>'+m+'</td><td class="income">'+money(v.inc)+'</td><td class="expense">'+money(v.exp)+'</td><td>'+money(v.inc-v.exp)+'</td><td>'+v.count+'</td></tr>').join('');
+
+  renderMonthlyCategoryTables();
+
+  const monthAInput=document.getElementById('ltMonthA');
+  const monthBInput=document.getElementById('ltMonthB');
+  if(monthAInput && !monthAInput.value) monthAInput.value=monthStr();
+  if(monthBInput && !monthBInput.value){
+    const d=new Date(); d.setMonth(d.getMonth()-1);
+    monthBInput.value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  }
+  renderCategoryMonthCompare();
+}
+
+function categoryMonthTotals(type, monthKey){
+  const map={};
+  transactions.forEach(x=>{
+    if(x.type!==type) return;
+    if((x.date||'').slice(0,7)!==monthKey) return;
+    map[x.category]=(map[x.category]||0)+Number(x.amount||0);
+  });
+  return map;
+}
+
+function renderMonthlyCategoryTables(){
+  const monthly={};
+  transactions.forEach(x=>{
+    if(x.type!=='income' && x.type!=='expense') return;
+    const m=(x.date||'').slice(0,7);
+    if(!m) return;
+    if(!monthly[m]) monthly[m]={income:{}, expense:{}};
+    const bucket = x.type==='income' ? monthly[m].income : monthly[m].expense;
+    bucket[x.category]=(bucket[x.category]||0)+Number(x.amount||0);
+  });
+  const months=Object.keys(monthly).sort((a,b)=>b.localeCompare(a)).slice(0,12);
+
+  const incomeRows=months.map(m=>{
+    const inc=monthly[m].income;
+    const keySums=KEY_INCOME_CATEGORIES.map(c=>inc[c]||0);
+    const totalIncome=Object.values(inc).reduce((s,v)=>s+v,0);
+    const otherIncome=totalIncome-keySums.reduce((s,v)=>s+v,0);
+    return '<tr><td>'+m+'</td>'+keySums.map(v=>'<td class="right">'+money(v)+'</td>').join('')+'<td class="right">'+money(otherIncome)+'</td><td class="right income">'+money(totalIncome)+'</td></tr>';
+  });
+  document.getElementById('monthlyIncomeCategoryTable').innerHTML = incomeRows.join('') || '<tr><td colspan="8" class="empty">無資料</td></tr>';
+
+  const expenseCatSet=new Set();
+  months.forEach(m=>Object.keys(monthly[m].expense).forEach(c=>expenseCatSet.add(c)));
+  const expenseCats=[...expenseCatSet].sort();
+  document.getElementById('monthlyExpenseCategoryHead').innerHTML = '<tr><th>月份</th>'+expenseCats.map(c=>'<th>'+catLabel(c)+'</th>').join('')+'<th>支出合計</th></tr>';
+  const expenseRows=months.map(m=>{
+    const exp=monthly[m].expense;
+    const total=Object.values(exp).reduce((s,v)=>s+v,0);
+    return '<tr><td>'+m+'</td>'+expenseCats.map(c=>'<td class="right">'+money(exp[c]||0)+'</td>').join('')+'<td class="right expense">'+money(total)+'</td></tr>';
+  });
+  document.getElementById('monthlyExpenseCategoryTable').innerHTML = expenseRows.length ? expenseRows.join('') : '<tr><td class="empty">無資料</td></tr>';
+}
+
+function renderCategoryMonthCompare(){
+  const monthAInput=document.getElementById('ltMonthA');
+  const monthBInput=document.getElementById('ltMonthB');
+  if(!monthAInput) return;
+  const monthA=monthAInput.value || monthStr();
+  const monthB=monthBInput.value;
+  document.getElementById('ltMonthALabel').textContent=monthA+' 金額';
+  document.getElementById('ltMonthBLabel').textContent=monthB ? (monthB+' 金額') : '（未選擇）';
+
+  const incA=categoryMonthTotals('income',monthA), expA=categoryMonthTotals('expense',monthA);
+  const incB=monthB?categoryMonthTotals('income',monthB):{};
+  const expB=monthB?categoryMonthTotals('expense',monthB):{};
+
+  function buildRows(mapA,mapB,typeLabel){
+    const cats=[...new Set([...Object.keys(mapA),...Object.keys(mapB)])];
+    cats.sort((a,b)=>(mapA[b]||0)-(mapA[a]||0));
+    return cats.map(c=>{
+      const va=mapA[c]||0, vb=mapB[c]||0;
+      const diffHtml = !monthB ? '-' : (vb-va===0 ? money(0) : (vb-va>0 ? '<span class="income">+'+money(vb-va)+'</span>' : '<span class="expense">'+money(vb-va)+'</span>'));
+      return '<tr><td>'+typeLabel+'</td><td>'+catLabel(c)+'</td><td class="right">'+money(va)+'</td><td class="right">'+(monthB?money(vb):'-')+'</td><td class="right">'+diffHtml+'</td></tr>';
+    }).join('');
+  }
+
+  const rows = buildRows(incA,incB,'收入') + buildRows(expA,expB,'支出');
+  document.getElementById('categoryCompareTable').innerHTML = rows || '<tr><td colspan="5" class="empty">無資料</td></tr>';
+}
+
+window.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeModal('withdrawModal'); closeModal('editModal'); closeModal('exportModal'); } });
+init();
+</script>
+</body>
+</html>
